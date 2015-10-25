@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  
+  <title><![CDATA[Rayn新天地]]></title>
+  <subtitle><![CDATA[Rayn的个人博客]]></subtitle>
+  <link href="/atom.xml" rel="self"/>
+  <link href="http://www.raynxxx.com//"/>
+  <updated>2015-10-25T08:28:39.004Z</updated>
+  <id>http://www.raynxxx.com//</id>
+  
+  <author>
+    <name><![CDATA[Rayn]]></name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title><![CDATA[MIT 6.824 Lab 1：MapReduce]]></title>
+    <link href="http://www.raynxxx.com/2015/10/25/6.824_lab1/"/>
+    <id>http://www.raynxxx.com/2015/10/25/6.824_lab1/</id>
+    <published>2015-10-25T08:23:31.000Z</published>
+    <updated>2015-10-25T08:28:39.004Z</updated>
+    <content type="html"><![CDATA[<p>6.824 的第一个Lab，实验要求是用 go 语言完成一个简易的 MapReduce 框架以及 Word Count 任务。</p>
+<p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/mapreduce.pdf" target="_blank" rel="external">Google MapReduce 论文</a></em></strong></p>
+<p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/lab1.pdf" target="_blank" rel="external">Lab 1 详细描述文档</a></em></strong></p>
+<a id="more"></a>
+<h2 id="Part_1：Word_Count">Part 1：Word Count</h2><p>Part 1 的任务是完成 Word Count 计算过程的 <code>Map</code> 和 <code>Reduce</code> 函数。在这之前，我们要先来看一看课程提供的代码 <code>wc.go</code> 和 <code>mapreduce.go</code>，第一个 Test 的入口函数是</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RunSingle(<span class="number">5</span>, <span class="number">3</span>, os.Args[<span class="number">2</span>], Map, Reduce)</span><br></pre></td></tr></table></figure>
+<p>把这个读懂，理清一遍运行过程，Part 1 就没问题了。</p>
+<figure class="highlight mel"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Run jobs sequentially.</span></span><br><span class="line">func RunSingle(nMap <span class="keyword">int</span>, nReduce <span class="keyword">int</span>, <span class="keyword">file</span> <span class="keyword">string</span>,</span><br><span class="line">	Map func(<span class="keyword">string</span>) <span class="variable">*list</span>.List,</span><br><span class="line">	Reduce func(<span class="keyword">string</span>, <span class="variable">*list</span>.List) <span class="keyword">string</span>) &#123;</span><br><span class="line">	mr := InitMapReduce(nMap, nReduce, <span class="keyword">file</span>, <span class="string">""</span>)</span><br><span class="line">	mr.Split(mr.<span class="keyword">file</span>)</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; nMap; i++ &#123;</span><br><span class="line">		DoMap(i, mr.<span class="keyword">file</span>, mr.nReduce, Map)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; mr.nReduce; i++ &#123;</span><br><span class="line">		DoReduce(i, mr.<span class="keyword">file</span>, mr.nMap, Reduce)</span><br><span class="line">	&#125;</span><br><span class="line">	mr.Merge()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>RunSingle()</code> 函数接受 5 个参数 Map，Reduce 过程的数量，待处理的文件 file，以及 Map 和 Reduce 函数。<br>先是初始化一个 MapReduce 结构，然后将 file 通过 <code>Split()</code> 函数分裂成几乎等大小的 <code>nMap</code> 个中间文件，然后对每一个中间文件进行 <code>DoMap()</code> 处理。</p>
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Read split for job, call Map for that split, and create nreduce</span></span><br><span class="line"><span class="comment">// partitions.</span></span><br><span class="line">func DoMap(JobNumber int, fileName string,</span><br><span class="line">	nreduce int, Map func(string) *<span class="keyword">list</span>.<span class="keyword">List</span>) &#123;</span><br><span class="line">	name := MapName(fileName, JobNumber)</span><br><span class="line">	<span class="comment">// 省略错误处理</span></span><br><span class="line">	res := Map(<span class="literal">string</span>(b))</span><br><span class="line">	<span class="comment">// <span class="label">XXX a bit inefficient. could open r files and run over list once</span></span></span><br><span class="line">	<span class="keyword">for</span> r := 0; r &lt; nreduce; r++ &#123;</span><br><span class="line">		<span class="keyword">file</span>, <span class="keyword">err</span> = os.Create(ReduceName(fileName, JobNumber, r))</span><br><span class="line">		<span class="comment">// 省略错误处理</span></span><br><span class="line">		<span class="keyword">enc</span> := json.NewEncoder(<span class="keyword">file</span>)</span><br><span class="line">		<span class="keyword">for</span> <span class="keyword">e</span> := res.Front(); <span class="keyword">e</span> != nil; <span class="keyword">e</span> = <span class="keyword">e</span>.Next() &#123;</span><br><span class="line">			kv := <span class="keyword">e</span>.Value.(KeyValue)</span><br><span class="line">			<span class="keyword">if</span> ihash(kv.Key)%uint32(nreduce) == uint32(r) &#123;</span><br><span class="line">				<span class="keyword">err</span> := <span class="keyword">enc</span>.<span class="keyword">Encode</span>(&amp;kv)</span><br><span class="line">				<span class="keyword">if</span> <span class="keyword">err</span> != nil &#123;</span><br><span class="line">					<span class="keyword">log</span>.Fatal(<span class="string">"DoMap: marshall "</span>, <span class="keyword">err</span>)</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">file</span>.<span class="keyword">Close</span>()</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>函数中首先会打开待处理的中间文件，然后将它传给 <code>Map()</code> 函数，这个就是我们要完成的 Map 函数</p>
+<figure class="highlight lasso"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// our simplified version of MapReduce does not supply a</span></span><br><span class="line"><span class="comment">// key to the Map function, as in the paper; only a value,</span></span><br><span class="line"><span class="comment">// which is a part of the input file content. the return</span></span><br><span class="line"><span class="comment">// value should be a list of key/value pairs, each represented</span></span><br><span class="line"><span class="comment">// by a mapreduce.KeyValue.</span></span><br><span class="line">func <span class="built_in">Map</span>(value <span class="built_in">string</span>) *<span class="built_in">list</span><span class="built_in">.</span><span class="built_in">List</span> &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注释中也写了，这个函数是将传入的 string 处理，然后返回一个 key/value 组成的 List，然后就可以将这个函数完成了</p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="func"><span class="keyword">func</span> <span class="title">Map</span><span class="params">(value string)</span></span> *list.<span class="type">List</span> &#123;</span><br><span class="line">	<span class="built_in">split</span> := <span class="func"><span class="keyword">func</span><span class="params">(<span class="built_in">c</span> rune)</span></span> bool &#123;</span><br><span class="line">		<span class="keyword">return</span> !unicode.<span class="type">IsLetter</span>(<span class="built_in">c</span>)</span><br><span class="line">	&#125;</span><br><span class="line">	words := strings.<span class="type">FieldsFunc</span>(value, <span class="built_in">split</span>)</span><br><span class="line">	ret := list.<span class="type">New</span>()</span><br><span class="line">	<span class="keyword">for</span> <span class="number">_</span>, word := range words &#123;</span><br><span class="line">		ret.<span class="type">PushBack</span>(mapreduce.<span class="type">KeyValue</span>&#123;word, <span class="string">"1"</span>&#125;)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> ret</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后回到 <code>DoMap()</code> 函数，将返回的 List 通过 <code>Hash(Key) % nReduce</code> 分到 <code>nReduce</code> 个中间文件中，然后结束 <code>DoMap()</code>。 接着在分别执行 <code>DoReduce()</code> 过程。</p>
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Read map outputs for partition job, sort them by key, call reduce for each</span></span><br><span class="line"><span class="comment">// key</span></span><br><span class="line">func DoReduce(job int, fileName string, nmap int,</span><br><span class="line">	Reduce func(string, *<span class="keyword">list</span>.<span class="keyword">List</span>) string) &#123;</span><br><span class="line">	kvs := make(map[string]*<span class="keyword">list</span>.<span class="keyword">List</span>)</span><br><span class="line">	<span class="keyword">for</span> i := 0; i &lt; nmap; i++ &#123;</span><br><span class="line">		name := ReduceName(fileName, i, job)</span><br><span class="line">		fmt.Printf(<span class="string">"DoReduce: read %s\n"</span>, name)</span><br><span class="line">		<span class="keyword">file</span>, <span class="keyword">err</span> := os.<span class="keyword">Open</span>(name)</span><br><span class="line">		<span class="comment">// 省略错误处理</span></span><br><span class="line">		<span class="keyword">dec</span> := json.NewDecoder(<span class="keyword">file</span>)</span><br><span class="line">		<span class="keyword">for</span> &#123;</span><br><span class="line">			<span class="keyword">var</span> kv KeyValue</span><br><span class="line">			<span class="keyword">err</span> = <span class="keyword">dec</span>.<span class="keyword">Decode</span>(&amp;kv)</span><br><span class="line">			<span class="keyword">if</span> <span class="keyword">err</span> != nil &#123;</span><br><span class="line">				<span class="keyword">break</span></span><br><span class="line">			&#125;</span><br><span class="line">			_, ok := kvs[kv.Key]</span><br><span class="line">			<span class="keyword">if</span> !ok &#123;</span><br><span class="line">				kvs[kv.Key] = <span class="keyword">list</span>.New()</span><br><span class="line">			&#125;</span><br><span class="line">			kvs[kv.Key].PushBack(kv.Value)</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">file</span>.<span class="keyword">Close</span>()</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">var</span> keys []<span class="literal">string</span></span><br><span class="line">	<span class="keyword">for</span> k := <span class="keyword">range</span> kvs &#123;</span><br><span class="line">		keys = <span class="keyword">append</span>(keys, k)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">sort</span>.Strings(keys)</span><br><span class="line">	p := MergeName(fileName, job)</span><br><span class="line">	<span class="keyword">file</span>, <span class="keyword">err</span> := os.Create(p)</span><br><span class="line">	<span class="comment">// 省略错误处理</span></span><br><span class="line">	<span class="keyword">enc</span> := json.NewEncoder(<span class="keyword">file</span>)</span><br><span class="line">	<span class="keyword">for</span> _, k := <span class="keyword">range</span> keys &#123;</span><br><span class="line">		res := Reduce(k, kvs[k])</span><br><span class="line">		<span class="keyword">enc</span>.<span class="keyword">Encode</span>(KeyValue&#123;k, res&#125;)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">file</span>.<span class="keyword">Close</span>()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在 <code>DoReduce()</code> 函数中，将 <code>nMap</code> 个 hash 值一样的中间文件处理成一个 map[string]*list.List 结构，也就是将 Key 相同的 Value 都组成一个 List，然后再对 map 由 key 排序，再将 map 中每一个 string/List pair 交给 <code>Reduce()</code> 处理，也就是我们要完成的 Reduce 函数</p>
+<figure class="highlight livecodeserver"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// called once <span class="keyword">for</span> <span class="keyword">each</span> key generated <span class="keyword">by</span> Map, <span class="operator">with</span> <span class="operator">a</span> list<span class="comment"></span><br><span class="line">// of that key's string value. should return a single</span><span class="comment"></span><br><span class="line">// output value for that key.</span></span><br><span class="line">func Reduce(key <span class="keyword">string</span>, values *list.List) <span class="keyword">string</span> &#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注释中也说了，将 key 对应的 List 里面的 values 加起来返回一个总和，于是这个函数也是很简单的实现</p>
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">func Reduce(key string, values *<span class="keyword">list</span>.<span class="keyword">List</span>) string &#123;</span><br><span class="line">	<span class="keyword">var</span> <span class="keyword">sum</span> int = 0</span><br><span class="line">	<span class="keyword">for</span> <span class="keyword">e</span> := values.Front(); <span class="keyword">e</span> != nil; <span class="keyword">e</span> = <span class="keyword">e</span>.Next() &#123;</span><br><span class="line">		<span class="keyword">count</span>, _ := strconv.Atoi(<span class="keyword">e</span>.Value.(string))</span><br><span class="line">		<span class="keyword">sum</span> += <span class="keyword">count</span></span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> strconv.Itoa(<span class="keyword">sum</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>然后回到 <code>DoReduce()</code> 函数，将处理完成的 key/value pairs 写到结果文件去，再回到 <code>RunSingle()</code>，调用 Merge() 函数将 <code>nReduce</code> 个结果文件合并成最后的输出文件。</p>
+<p>到这里，Part 1 就算完成了</p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>6.824 的第一个Lab，实验要求是用 go 语言完成一个简易的 MapReduce 框架以及 Word Count 任务。</p>
+<p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/mapreduce.pdf">Google MapReduce 论文</a></em></strong></p>
+<p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/lab1.pdf">Lab 1 详细描述文档</a></em></strong></p>]]>
+    
+    </summary>
+    
+      <category term="go" scheme="http://www.raynxxx.com/tags/go/"/>
+    
+      <category term="分布式系统" scheme="http://www.raynxxx.com/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[MIT 6.824 Distributed Systems 计划]]></title>
+    <link href="http://www.raynxxx.com/2015/10/24/6.824_schedule/"/>
+    <id>http://www.raynxxx.com/2015/10/24/6.824_schedule/</id>
+    <published>2015-10-24T08:23:31.000Z</published>
+    <updated>2015-10-25T08:28:44.812Z</updated>
+    <content type="html"><![CDATA[<p>出于对分布式系统的兴趣，开始跟 <strong><code>MIT 6.824 Spring 2015</code></strong> 的课程，课程主页在<a href="http://nil.csail.mit.edu/6.824/2015/schedule.html" target="_blank" rel="external">这里</a>， 6.824 是 MIT 的一门研究生课程，不论深度还是广度可见一斑，加上大三课程量繁琐，所以应该会花比较长的时间来完成它。</p>
+<p>这门课的 Lab 采用 go 语言，我通过 <a href="http://www.golang-book.com/" target="_blank" rel="external">An Introduction to Programming in Go</a> 这本小册子大概了解了一下 go 的语法。</p>
+<a id="more"></a>
+<h2 id="计划表">计划表</h2><h4 id="lecture_1_:_Introduction">lecture 1 : Introduction</h4><p>Preparation: Read <a href="">MapReduce</a></p>
+<p>Assigned: <a href="">Lab 1 详解</a></p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>出于对分布式系统的兴趣，开始跟 <strong><code>MIT 6.824 Spring 2015</code></strong> 的课程，课程主页在<a href="http://nil.csail.mit.edu/6.824/2015/schedule.html">这里</a>， 6.824 是 MIT 的一门研究生课程，不论深度还是广度可见一斑，加上大三课程量繁琐，所以应该会花比较长的时间来完成它。</p>
+<p>这门课的 Lab 采用 go 语言，我通过 <a href="http://www.golang-book.com/">An Introduction to Programming in Go</a> 这本小册子大概了解了一下 go 的语法。</p>]]>
+    
+    </summary>
+    
+      <category term="6.824" scheme="http://www.raynxxx.com/tags/6-824/"/>
+    
+      <category term="go" scheme="http://www.raynxxx.com/tags/go/"/>
+    
+      <category term="分布式系统" scheme="http://www.raynxxx.com/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[CUIT ACM Website 项目]]></title>
+    <link href="http://www.raynxxx.com/2015/08/03/cuit_acm_website/"/>
+    <id>http://www.raynxxx.com/2015/08/03/cuit_acm_website/</id>
+    <published>2015-08-03T08:17:31.000Z</published>
+    <updated>2015-08-03T08:37:49.988Z</updated>
+    <content type="html"><![CDATA[<blockquote class="blockquote-center"><br>CUIT ACM Website<br><a href="https://github.com/Raynxxx/CUIT-ACM-Website" target="_blank" rel="external">项目链接</a><br></blockquote>
+
+<h3 id="大概">大概</h3><p>最近和<a href="http://www.c0d34ac.com/" target="_blank" rel="external">@zzy</a>学长一起再做一个项目，通过爬虫和数据库将ACMer在各大OJ上做题的信息和提交给整合起来，然后呢，dxy童鞋说要便于维护 (╮(╯▽╰)╭ 有没有人会维护还不造呢!)，所以我们就采用了Python Flask框架开始动(ban)工(zhuan).</p>
+<p>6月份的时候, 需求有做了大改动, 基本上是要做成一个CUIT ACM Team的官网,替代以前的老官网. 整合了新闻, 爬虫, 解题报告, 内部资料云共享的一系列的模块.<br><a id="more"></a></p>
+<h3 id="项目结构">项目结构</h3><ul>
+<li>前端框架: Bootstrap 3 + jQuery 2</li>
+<li>服务端框架: Python Flask 0.10</li>
+<li>数据库: Flask-SQLAlchemy + MySQL 5.6</li>
+</ul>
+<h3 id="目前在做">目前在做</h3><h4 id="1-_新闻">1. 新闻</h4><p>在<code>0.1 beta</code>版本中完成了一个基本的新闻模块. </p>
+<p><code>update 2015/07/29</code> 新闻加入了分页<br><code>update 2015/08/03</code> 依赖于媒体管理模块的完成, 新闻可以添加图片与附件了</p>
+<h4 id="2-_获取队员的各个OJ的交题的信息">2. 获取队员的各个OJ的交题的信息</h4><p>这个每个OJ都太有个性了，比如POJ的破烂服务器请求太频繁就报错。。。所以针对每个OJ都做一个Spider, 目前由zzy童鞋基本完成了一个稳定版.</p>
+<p><code>update 2015/07/29</code> 排名界面重新设计</p>
+<h4 id="3-_用户管理系统">3. 用户管理系统</h4><p>就是用户系统，目前做好了登录，密码也是采用的Hash加密，接下来还有注册页面和用户信息的完善，还有对各个OJ的账号的收集接口，等OJ爬虫做的差不多了，这个也就能开搞了.</p>
+<p><code>update 2015/04/18</code> 用户系统基本完工<br><code>update 2015/07/26</code> 用户系统推翻重写, 用户有三级, 管理员, 教练, 学生.</p>
+<h4 id="4-_解题报告">4. 解题报告</h4><p>解题报告目前做了一个超简单的原型, 很多想法没有完善,所以并未在<code>0.1 beta</code>中发布</p>
+<h4 id="5-_校队图书">5. 校队图书</h4><p>也是有一个简单的原型, 优先度较低, 留待后期版本</p>
+<h4 id="6-_校队荣耀墙">6. 校队荣耀墙</h4><p>dxy说要把每一届的ACM Team经历贴出来，目前还没想好原型，也就没有动工.</p>
+<h4 id="7-_媒体资源上传与管理">7. 媒体资源上传与管理</h4><p>官网所有的媒体资源, 包含了新闻, 解题报告, 内部共享资源等.</p>
+<p><code>update 2015/08/01</code> 初步完成</p>
+<h4 id="8-_内部资料共享模块">8. 内部资料共享模块</h4><p>优先度较低, 未开工</p>
+<h3 id="目前长这样">目前长这样</h3><p>贴一张目前的丑照，对于我一直兼职前端工程师，真的好心塞 T~T</p>
+<p><img src="http://raynxxx.qiniudn.com/img/oj_helper/QQ截图20150326191446.png?imageView2/2/w/1100/q/100" alt=""></p>
+<p><code>update 2015/08/03</code> 界面在这一个月进行了重造, 贴几张图 ^_^</p>
+<p><img src="http://7s1s8i.com1.z0.glb.clouddn.com/cuit_acm_website/new_index.jpg?imageView2/2/w/1100/q/100" alt=""><br><img src="http://7s1s8i.com1.z0.glb.clouddn.com/cuit_acm_website/user_management.jpg?imageView2/2/w/1100/q/100" alt=""><br><img src="http://7s1s8i.com1.z0.glb.clouddn.com/cuit_acm_website/profile.jpg?imageView2/2/w/1100/q/100" alt=""></p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<blockquote class="blockquote-center"><br>CUIT ACM Website<br><a href="https://github.com/Raynxxx/CUIT-ACM-Website">项目链接</a><br></blockquote>
+
+<h3 id="大概">大概</h3><p>最近和<a href="http://www.c0d34ac.com/">@zzy</a>学长一起再做一个项目，通过爬虫和数据库将ACMer在各大OJ上做题的信息和提交给整合起来，然后呢，dxy童鞋说要便于维护 (╮(╯▽╰)╭ 有没有人会维护还不造呢!)，所以我们就采用了Python Flask框架开始动(ban)工(zhuan).</p>
+<p>6月份的时候, 需求有做了大改动, 基本上是要做成一个CUIT ACM Team的官网,替代以前的老官网. 整合了新闻, 爬虫, 解题报告, 内部资料云共享的一系列的模块.<br>]]>
+    
+    </summary>
+    
+      <category term="Flask" scheme="http://www.raynxxx.com/tags/Flask/"/>
+    
+      <category term="Python" scheme="http://www.raynxxx.com/tags/Python/"/>
+    
+      <category term="Web" scheme="http://www.raynxxx.com/tags/Web/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[deque 大法好]]></title>
+    <link href="http://www.raynxxx.com/2015/06/04/deque_dafahao/"/>
+    <id>http://www.raynxxx.com/2015/06/04/deque_dafahao/</id>
+    <published>2015-06-04T14:13:11.000Z</published>
+    <updated>2015-06-04T14:25:30.815Z</updated>
+    <content type="html"><![CDATA[<p>在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。</p>
+<a id="more"></a>
+<h2 id="deque概述">deque概述</h2><p>对于C++ STL中的deque是一种双向开口的顺序容器，可以支持头尾两端的插入删除操作。类似的还有大家熟知的vector，由于vector的动态分配特性所致，虽然可以头尾两端操作，但是效率极差，达到了O(n)。再来看在deque中，这个操作却是常数级别的，为什么呢？接下来我要说到的就是这个。</p>
+<h2 id="deque的内存结构">deque的内存结构</h2><p>deque从表面上看起来是一段连续空间，但是内部实则不然，deque内部其实是由一段一段的定量连续空间接起来的，每当空间不足，就新开辟一段定量连续空间，然后把它接过去就OK了，这就是它和vector最大不同，当然代价就是特别设计的迭代器有那么点复杂。</p>
+<p>deque采用了一块map作为主控中心，它是一小段连续空间，每个节点指向另一段定量连续空间(称为缓冲区，这里才是deque数据的真正存储地带)，deque的实际定义如下，BufSize就是一段缓冲区的大小。</p>
+<blockquote>
+<p>template &lt;class T, class Alloc = alloc, size_t BufSize&gt;<br>class deuqe {…}</p>
+</blockquote>
+<h2 id="deque的迭代器">deque的迭代器</h2>]]></content>
+    <summary type="html">
+    <![CDATA[<p>在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。</p>]]>
+    
+    </summary>
+    
+      <category term="C++" scheme="http://www.raynxxx.com/tags/C/"/>
+    
+      <category term="STL" scheme="http://www.raynxxx.com/tags/STL/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[MiniSTL Project]]></title>
+    <link href="http://www.raynxxx.com/2015/01/31/ministl/"/>
+    <id>http://www.raynxxx.com/2015/01/31/ministl/</id>
+    <published>2015-01-31T06:57:54.000Z</published>
+    <updated>2015-03-25T08:31:05.247Z</updated>
+    <content type="html"><![CDATA[<p><blockquote class="blockquote-center"><br>概要<br>STL即Standard Template Library，标准模板库，是C++十分重要的一部分。如侯捷所说，源码面前了无秘密，99.99%的程序员所写的程序在STL前都是三流水准。<br></blockquote><br><a id="more"></a></p>
+<p>项目: 一个STL的子集，采用C++11实现STL的基本组件，各类容器和算法<br>开发语言:  <code>C++11</code><br>编译环境:  <code>Visual Studio Community 2013</code><br>参考资料1: <code>STL源码剖析 侯捷著</code><br>参考资料1: <code>gcc 4.9 源代码</code> <a href="https://github.com/gcc-mirror/gcc/tree/master/libstdc%2B%2B-v3/include" target="_blank" rel="external">点我</a><br>代码放在了github上: <a href="https://github.com/Raynxxx/MiniSTL" target="_blank" rel="external"><strong>MiniSTL</strong></a></p>
+<h2 id="项目计划">项目计划</h2><table>
+<thead>
+<tr>
+<th>基本组件</th>
+<th>进度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>空间配置器</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>uninitialized</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>type traits</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>iterator</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>reverse_iterator</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>string</td>
+<td>15%</td>
+</tr>
+<tr>
+<td>pair</td>
+<td>–</td>
+</tr>
+</tbody>
+</table>
+<p><br></p>
+<table>
+<thead>
+<tr>
+<th>顺序容器</th>
+<th>进度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>vector</td>
+<td>60%</td>
+</tr>
+</tbody>
+</table>
+<p><br></p>
+<table>
+<thead>
+<tr>
+<th>关联容器</th>
+<th>进度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><br></p>
+<table>
+<thead>
+<tr>
+<th>STL Algorithms</th>
+<th>进度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fill</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>fill_n</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>min</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>max</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>equal</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>swap</td>
+<td>100%</td>
+</tr>
+</tbody>
+</table>
+<h2 id="组件测试">组件测试</h2>]]></content>
+    <summary type="html">
+    <![CDATA[<p><blockquote class="blockquote-center"><br>概要<br>STL即Standard Template Library，标准模板库，是C++十分重要的一部分。如侯捷所说，源码面前了无秘密，99.99%的程序员所写的程序在STL前都是三流水准。<br></blockquote><br>]]>
+    
+    </summary>
+    
+      <category term="C++" scheme="http://www.raynxxx.com/tags/C/"/>
+    
+      <category term="STL" scheme="http://www.raynxxx.com/tags/STL/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[手把手用Java来做一个简易HttpServer]]></title>
+    <link href="http://www.raynxxx.com/2015/01/11/java_httpserver/"/>
+    <id>http://www.raynxxx.com/2015/01/11/java_httpserver/</id>
+    <published>2015-01-11T12:04:11.000Z</published>
+    <updated>2015-10-25T08:20:44.868Z</updated>
+    <content type="html"><![CDATA[<h2 id="简单的HTTP服务端">简单的HTTP服务端</h2><h3 id="演示">演示</h3><p><strong>利用Java的<code>套接字(Socket)</code>编程实现的一个很简单的HTTP服务端，能够对客户断的请求进行基本的响应。</strong><br><strong>运行服务，默认监听8080端口，等待客户端请求。</strong></p>
+<p><img src="http://raynxxx.qiniudn.com/img/java/截图20150111202031.png" alt=""></p>
+<a id="more"></a>
+<p><strong>在Chrome里输入地址<code>http://localhost:8080/index.htm</code>，就可以向服务端发出请求，然后获取到index.htm，然后解析网页，呈现网页</strong></p>
+<p><img src="http://raynxxx.qiniudn.com/img/java/截图20150111201649.png" alt=""></p>
+<h3 id="代码">代码</h3><p><strong>具体实现代码如下，写的很挫，对Java的IO和线程还是不太熟悉.</strong></p>
+<ul>
+<li>version 0.1 简单实现，添加部分MIME类型判定</li>
+<li>version 0.2 添加简单的多进程处理客户端请求，有一定几率死锁</li>
+<li>version 0.3 添加对实现Servlet借口的类的链接，并处理</li>
+</ul>
+<h4 id="Servlet接口_Servlet-java"><strong><em>Servlet接口 Servlet.java</em></strong></h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> ch1;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.OutputStream;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span><br><span class="line"> * <span class="doctag">@author</span> Rayn</span><br><span class="line"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Servlet</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">init</span><span class="params">()</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">service</span><span class="params">(<span class="keyword">byte</span>[] requestBuffer, OutputStream out)</span> <span class="keyword">throws</span> Exception</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="HTTP服务端口_HTTPServer-java"><strong><em>HTTP服务端口 HTTPServer.java</em></strong></h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> ch1;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.*;</span><br><span class="line"><span class="keyword">import</span> java.net.*;</span><br><span class="line"><span class="keyword">import</span> java.util.*;</span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.TimeUnit;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span><br><span class="line"> * <span class="doctag">@author</span> Rayn</span><br><span class="line"> * <span class="doctag">@version</span> 0.3</span><br><span class="line"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">HTTPServer</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> ServerSocket listen;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">int</span> port = <span class="number">8080</span>;</span><br><span class="line">        <span class="keyword">if</span>(args.length &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            port = Integer.parseInt(args[<span class="number">0</span>]);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            listen = <span class="keyword">new</span> ServerSocket(port);</span><br><span class="line">            System.out.println(<span class="string">"Listenning port: "</span> + listen.getLocalPort());</span><br><span class="line">            <span class="keyword">while</span> (<span class="keyword">true</span>) &#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    Socket incoming = listen.accept();</span><br><span class="line">                    Thread taskOfHTTP = <span class="keyword">new</span> Thread(<span class="keyword">new</span> ServerGET(incoming));</span><br><span class="line">                    taskOfHTTP.start();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ServerGET</span> <span class="keyword">implements</span> <span class="title">Runnable</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> String NEWLINE = System.getProperty(<span class="string">"line.separator"</span>);</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> String firstLineOfResponse = <span class="string">"HTTP/1.1 200 OK"</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> String responseHeader = <span class="string">"Content-Type:"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> Map&lt;String, Servlet&gt; servletCache = <span class="keyword">new</span> HashMap&lt;String, Servlet&gt;();</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Socket client;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">byte</span>[] buffer;</span><br><span class="line">    <span class="keyword">private</span> String request;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">ServerGET</span><span class="params">(Socket client)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.client = client;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        InputStream socketIn = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            socketIn = client.getInputStream();</span><br><span class="line">            TimeUnit.SECONDS.sleep(<span class="number">1</span>);</span><br><span class="line">            buffer = <span class="keyword">new</span> <span class="keyword">byte</span>[socketIn.available()];</span><br><span class="line">            socketIn.read(buffer);</span><br><span class="line">            request = <span class="keyword">new</span> String(buffer);</span><br><span class="line">            System.out.println(request);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        String firstLineOfRequest = request.substring(<span class="number">0</span>, request.indexOf(NEWLINE));</span><br><span class="line">        String uri = firstLineOfRequest.split(<span class="string">" "</span>)[<span class="number">1</span>];</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (uri.indexOf(<span class="string">"servlet"</span>) != -<span class="number">1</span>) &#123;</span><br><span class="line">            String servletName = <span class="keyword">null</span>;</span><br><span class="line">            <span class="keyword">if</span> (uri.indexOf(<span class="string">"?"</span>) != -<span class="number">1</span>) &#123;</span><br><span class="line">                servletName = uri.substring(uri.indexOf(<span class="string">"servlet/"</span>) + <span class="number">8</span>, uri.indexOf(<span class="string">"?"</span>));</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                servletName = uri.substring(uri.indexOf(<span class="string">"servlet/"</span>) + <span class="number">8</span>, uri.length());</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            Servlet servlet = servletCache.get(servletName);</span><br><span class="line">            <span class="keyword">if</span>(servlet == <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    servlet = (Servlet) Class.forName(<span class="string">"ch1."</span> + servletName).newInstance();</span><br><span class="line">                    servlet.init();</span><br><span class="line">                    servletCache.put(servletName, servlet);</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                servlet.service(buffer, client.getOutputStream());</span><br><span class="line">                TimeUnit.MILLISECONDS.sleep(<span class="number">500</span>);</span><br><span class="line">                client.close();</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> ;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        String content = responseHeader;</span><br><span class="line">        <span class="keyword">if</span> (uri.indexOf(<span class="string">"html"</span>) != -<span class="number">1</span> || uri.indexOf(<span class="string">"htm"</span>) != -<span class="number">1</span>) &#123;</span><br><span class="line">            content += <span class="string">"text/html"</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (uri.indexOf(<span class="string">"css"</span>) != -<span class="number">1</span>) &#123;</span><br><span class="line">            content += <span class="string">"text/css"</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (uri.indexOf(<span class="string">"js"</span>) != -<span class="number">1</span>) &#123;</span><br><span class="line">            content += <span class="string">"text/javascript"</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (uri.indexOf(<span class="string">"jpeg"</span>) != -<span class="number">1</span> || uri.indexOf(<span class="string">"jpg"</span>) != -<span class="number">1</span>) &#123;</span><br><span class="line">            content += <span class="string">"image/jpeg"</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (uri.indexOf(<span class="string">"gif"</span>) != -<span class="number">1</span>) &#123;</span><br><span class="line">            content += <span class="string">"image/gif"</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (uri.indexOf(<span class="string">"png"</span>) != -<span class="number">1</span>) &#123;</span><br><span class="line">            content += <span class="string">"image/png"</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (uri.indexOf(<span class="string">"wav"</span>) != -<span class="number">1</span>) &#123;</span><br><span class="line">            content += <span class="string">"audio/x-wav"</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            content += <span class="string">"application/octet-stream"</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> (InputStream contentIn = HTTPServer.class.getResourceAsStream(<span class="string">"/ch1/"</span> + uri);</span><br><span class="line">                    OutputStream socketOut = client.getOutputStream()) &#123;</span><br><span class="line"></span><br><span class="line">            socketOut.write((firstLineOfResponse + NEWLINE).getBytes());</span><br><span class="line">            socketOut.write((content + NEWLINE + NEWLINE).getBytes());</span><br><span class="line">            buffer = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">1024</span>];</span><br><span class="line">            <span class="keyword">int</span> len = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">while</span>((len = contentIn.read(buffer)) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                socketOut.write(buffer, <span class="number">0</span>, len);</span><br><span class="line">            &#125;</span><br><span class="line">            TimeUnit.SECONDS.sleep(<span class="number">1</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            System.out.println(<span class="string">"This file is not exist."</span>);</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            client.close();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="THE_END">THE END</h2>]]></content>
+    <summary type="html">
+    <![CDATA[<h2 id="简单的HTTP服务端">简单的HTTP服务端</h2><h3 id="演示">演示</h3><p><strong>利用Java的<code>套接字(Socket)</code>编程实现的一个很简单的HTTP服务端，能够对客户断的请求进行基本的响应。</strong><br><strong>运行服务，默认监听8080端口，等待客户端请求。</strong></p>
+<p><img src="http://raynxxx.qiniudn.com/img/java/截图20150111202031.png" alt=""></p>]]>
+    
+    </summary>
+    
+      <category term="Java" scheme="http://www.raynxxx.com/tags/Java/"/>
+    
+      <category term="Web" scheme="http://www.raynxxx.com/tags/Web/"/>
+    
+      <category term="编程" scheme="http://www.raynxxx.com/tags/%E7%BC%96%E7%A8%8B/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[UVA 题解]]></title>
+    <link href="http://www.raynxxx.com/2014/12/15/uva_solution/"/>
+    <id>http://www.raynxxx.com/2014/12/15/uva_solution/</id>
+    <published>2014-12-15T14:24:43.000Z</published>
+    <updated>2015-01-21T12:27:02.524Z</updated>
+    <content type="html"><![CDATA[<p>##<strong> 写在前面 </strong><br><strong>今年参加了两场区域赛<code>西安站</code>和<code>北京站</code>。很不幸的打了两块铁。。应该是感觉到自己的底子还是不够牢靠，思维上严重不足，不知道明年还会不会打比赛，先从最基础的UVA前100道开始做起走吧。</strong></p>
+<hr>
+<a id="more"></a>
+<h2 id="100_The_3n_+_1_problem">100 The 3n + 1 problem</h2><p><code>暴力模拟</code>，取个最大值即可，有个trick就是输入可能不合法，但输出要原样输出。<br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20100%20The%203n%20%2B%201%20problem.cpp" target="_blank" rel="external">code</a></p>
+<h2 id="101_The_Blocks_Problem">101 The Blocks Problem</h2><p><code>暴力模拟</code>，有点阅读题的感觉，读懂了就好做了。<br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20101%20The%20Blocks%20Problem.cpp" target="_blank" rel="external">code</a></p>
+<h2 id="102_Ecological_Bin_Packing">102 Ecological Bin Packing</h2><p><code>暴力枚举</code>，输入也是要注意与枚举序列编号相对应的，有点坑爹。<br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20102%20Ecological%20Bin%20Packing.cpp" target="_blank" rel="external">code</a></p>
+<h2 id="103_Stacking_Boxes">103 Stacking Boxes</h2><p>算是基础图论题吧，手生啊，有了想法之后硬是大半天敲不出来。。。<br>简单说下解法，暴力比较盒子大小，从小盒子向大盒子连有向边，然后就是求<code>最长递增子序列</code>，dfs啊，dp啊，怎么搞都行。<br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20103%20Stacking%20Boxes.cpp" target="_blank" rel="external">code</a></p>
+<h2 id="104_Arbitrage">104 Arbitrage</h2><p>开始是打算用搜索做的，但是大半天写不好，其实这道题该是动态规划嘛，<code>Floyd</code>的变形，<code>dp[i][j][step]</code>代表从 i 到 j 经过 step 次转换的最大收益。<br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20104%20Arbitrage.cpp" target="_blank" rel="external">code</a></p>
+<h2 id="105_The_Skyline_Problem">105 The Skyline Problem</h2><p>使用<code>线段树</code>维护区间覆盖最大值，然后从左到右扫描一次，有个地方不一样就是不用PushUp，因为建筑的高度值是有覆盖范围的，是高低错落的，必须精确到小区间，PushUp之后在PushDown会使得其它相对低一些的建筑的高度搞错。<br>其实这道题的坐标范围最大为10000，平方级别的暴力维护区间也是可以的。。。。<br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20105%20The%20Skyline%20Problem.cpp" target="_blank" rel="external">code</a></p>
+<h2 id="106_Fermat_vs-_Pythagoras">106 Fermat vs. Pythagoras</h2><p>一道不怎么懂的<code>数论</code>题，弱项还是弱。贴个网上看的题解，说的挺清楚的。<br><a href="http://www.cnblogs.com/devymex/archive/2010/08/07/1799713.html" target="_blank" rel="external">题解</a><br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20106%20Fermat%20vs.%20Pythagoras.cpp" target="_blank" rel="external">code</a></p>
+<h2 id="107_The_Cat_in_the_Hat">107 The Cat in the Hat</h2><p>就是一道<code>简单公式</code>题，直接暴力去算就行。<br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20107%20The%20Cat%20in%20the%20Hat.cpp" target="_blank" rel="external">code</a></p>
+<h2 id="108_Maximum_Sum">108 Maximum Sum</h2><p>求一个矩阵的最大连续子矩阵和，这道题maybe数据比较水，<code>暴力枚举 + 子矩阵和优化</code>能过。<br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20108%20Maximum%20Sum.cpp" target="_blank" rel="external">code</a></p>
+<h2 id="109_SCUD_Busters">109 SCUD Busters</h2><p>【题意】有一些国家，给出国家被围墙围了起来，围墙内的范围都属于这个国家，现在要发射一些导弹，如果导弹落到国家内，那对应的国家就会停电，现在问停电的总面积。<br>【分析】一道<code>计算几何</code>的题目，包含了凸包构造，凸包面积，点与多边形位置的判断三个环节，有个trick就是当一个国家被炸了之后应当标记，否则会计算重复的面积。<br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20109%20SCUD%20Busters.cpp" target="_blank" rel="external">code</a></p>
+<h2 id="110_Meta-Loopless_Sorts">110 Meta-Loopless Sorts</h2><p>有点麻烦的<code>递归模拟</code>题，用给定的规则去打印出指定的一个程序代码。<br><a href="https://github.com/Raynxxx/Contest/blob/master/UVA%20Problem%20Set/UVA%20110%20Meta-Loopless%20Sorts.cpp" target="_blank" rel="external">code</a></p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p>##<strong> 写在前面 </strong><br><strong>今年参加了两场区域赛<code>西安站</code>和<code>北京站</code>。很不幸的打了两块铁。。应该是感觉到自己的底子还是不够牢靠，思维上严重不足，不知道明年还会不会打比赛，先从最基础的UVA前100道开始做起走吧。</strong></p>
+<hr>]]>
+    
+    </summary>
+    
+      <category term="ACM" scheme="http://www.raynxxx.com/tags/ACM/"/>
+    
+      <category term="UVA" scheme="http://www.raynxxx.com/tags/UVA/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[我们的征途是星辰大海!]]></title>
+    <link href="http://www.raynxxx.com/2014/11/30/Interstellar/"/>
+    <id>http://www.raynxxx.com/2014/11/30/Interstellar/</id>
+    <published>2014-11-30T07:21:05.000Z</published>
+    <updated>2015-03-25T08:35:05.055Z</updated>
+    <content type="html"><![CDATA[<p><img src="http://raynxxx.qiniudn.com/img/movie/p2208771950.jpg?imageView2/2/w/1280/q/100" alt=""></p>
+<p>##<strong>瞬间未来</strong></p>
+<blockquote>
+<p><em>爱是一种力量，让我们穿越时空感受它的存在。</em><br><em>Love is the one thing that transcends time and space.</em></p>
+</blockquote>
+<a id="more"></a>
+<p>##所见所感</p>
+<p>从北京打铁回来后就立马奔去看了这个这个<a href="http://movie.douban.com/subject/1889243/?source=new_aladdin" target="_blank" rel="external">豆瓣9.3分</a>的神片。只想说我为何没有去看IMAX！！！<br>原谅我是物理渣，影片中的各种物理知识简直高能。</p>
+<p>电影的最后一段，Cooper和Murphy的双线最终在叙事和情感上汇流统一。被吸入黑洞的Cooper发现身处奇异的多维世界，重新和女儿心意相通，并意识到了自己的真正使命；Murphy感应到父亲的思念，借助Cooper利用重力传递的信息，获得了掌控重力理论的关键数据。<br>这份生命的守候，跨越了Murphy的一生，但幸运的是，她知道父亲一直没有放弃，即便横亘亿万光年，父亲也在试图守候着她，这份信念也最终支持她见到父亲最后的那一面。对Cooper而言，他对于承诺和任务所有的坚持，都是出于爱。航程的灯塔，旅途的终点，始终是女儿所在的地方。 </p>
+]]></content>
+    <summary type="html">
+    <![CDATA[<p><img src="http://raynxxx.qiniudn.com/img/movie/p2208771950.jpg?imageView2/2/w/1280/q/100" alt=""></p>
+<p>##<strong>瞬间未来</strong></p>
+<blockquote>
+<p><em>爱是一种力量，让我们穿越时空感受它的存在。</em><br><em>Love is the one thing that transcends time and space.</em></p>
+</blockquote>]]>
+    
+    </summary>
+    
+      <category term="生活" scheme="http://www.raynxxx.com/tags/%E7%94%9F%E6%B4%BB/"/>
+    
+      <category term="电影" scheme="http://www.raynxxx.com/tags/%E7%94%B5%E5%BD%B1/"/>
+    
+  </entry>
+  
+</feed>
