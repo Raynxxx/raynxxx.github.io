@@ -5,7 +5,7 @@
   <subtitle><![CDATA[Rayn的个人博客]]></subtitle>
   <link href="/atom.xml" rel="self"/>
   <link href="http://www.raynxxx.com//"/>
-  <updated>2015-10-25T08:28:39.004Z</updated>
+  <updated>2015-10-25T10:26:16.943Z</updated>
   <id>http://www.raynxxx.com//</id>
   
   <author>
@@ -20,12 +20,12 @@
     <link href="http://www.raynxxx.com/2015/10/25/6.824_lab1/"/>
     <id>http://www.raynxxx.com/2015/10/25/6.824_lab1/</id>
     <published>2015-10-25T08:23:31.000Z</published>
-    <updated>2015-10-25T08:28:39.004Z</updated>
+    <updated>2015-10-25T10:26:16.943Z</updated>
     <content type="html"><![CDATA[<p>6.824 的第一个Lab，实验要求是用 go 语言完成一个简易的 MapReduce 框架以及 Word Count 任务。</p>
-<p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/mapreduce.pdf" target="_blank" rel="external">Google MapReduce 论文</a></em></strong></p>
-<p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/lab1.pdf" target="_blank" rel="external">Lab 1 详细描述文档</a></em></strong></p>
 <a id="more"></a>
-<h2 id="Part_1：Word_Count">Part 1：Word Count</h2><p>Part 1 的任务是完成 Word Count 计算过程的 <code>Map</code> 和 <code>Reduce</code> 函数。在这之前，我们要先来看一看课程提供的代码 <code>wc.go</code> 和 <code>mapreduce.go</code>，第一个 Test 的入口函数是</p>
+<h2 id="预备">预备</h2><p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/mapreduce.pdf" target="_blank" rel="external">Google MapReduce 论文</a></em></strong></p>
+<p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/lab1.pdf" target="_blank" rel="external">Lab 1 详细描述文档</a></em></strong></p>
+<h2 id="Part_I：Word_Count">Part I：Word Count</h2><p>Part 1 的任务是完成 Word Count 计算过程的 <code>Map</code> 和 <code>Reduce</code> 函数。在这之前，我们要先来看一看课程提供的代码 <code>wc.go</code> 和 <code>mapreduce.go</code>，第一个 Test 的入口函数是</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RunSingle(<span class="number">5</span>, <span class="number">3</span>, os.Args[<span class="number">2</span>], Map, Reduce)</span><br></pre></td></tr></table></figure>
 <p>把这个读懂，理清一遍运行过程，Part 1 就没问题了。</p>
 <figure class="highlight mel"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Run jobs sequentially.</span></span><br><span class="line">func RunSingle(nMap <span class="keyword">int</span>, nReduce <span class="keyword">int</span>, <span class="keyword">file</span> <span class="keyword">string</span>,</span><br><span class="line">	Map func(<span class="keyword">string</span>) <span class="variable">*list</span>.List,</span><br><span class="line">	Reduce func(<span class="keyword">string</span>, <span class="variable">*list</span>.List) <span class="keyword">string</span>) &#123;</span><br><span class="line">	mr := InitMapReduce(nMap, nReduce, <span class="keyword">file</span>, <span class="string">""</span>)</span><br><span class="line">	mr.Split(mr.<span class="keyword">file</span>)</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; nMap; i++ &#123;</span><br><span class="line">		DoMap(i, mr.<span class="keyword">file</span>, mr.nReduce, Map)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; mr.nReduce; i++ &#123;</span><br><span class="line">		DoReduce(i, mr.<span class="keyword">file</span>, mr.nMap, Reduce)</span><br><span class="line">	&#125;</span><br><span class="line">	mr.Merge()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -43,13 +43,13 @@
 <figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">func Reduce(key string, values *<span class="keyword">list</span>.<span class="keyword">List</span>) string &#123;</span><br><span class="line">	<span class="keyword">var</span> <span class="keyword">sum</span> int = 0</span><br><span class="line">	<span class="keyword">for</span> <span class="keyword">e</span> := values.Front(); <span class="keyword">e</span> != nil; <span class="keyword">e</span> = <span class="keyword">e</span>.Next() &#123;</span><br><span class="line">		<span class="keyword">count</span>, _ := strconv.Atoi(<span class="keyword">e</span>.Value.(string))</span><br><span class="line">		<span class="keyword">sum</span> += <span class="keyword">count</span></span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> strconv.Itoa(<span class="keyword">sum</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>然后回到 <code>DoReduce()</code> 函数，将处理完成的 key/value pairs 写到结果文件去，再回到 <code>RunSingle()</code>，调用 Merge() 函数将 <code>nReduce</code> 个结果文件合并成最后的输出文件。</p>
 <p>到这里，Part 1 就算完成了</p>
-]]></content>
+<h2 id="Part_II:_Distributing_MapReduce_jobs">Part II: Distributing MapReduce jobs</h2><h2 id="Part_III:_Handling_worker_failures">Part III: Handling worker failures</h2>]]></content>
     <summary type="html">
-    <![CDATA[<p>6.824 的第一个Lab，实验要求是用 go 语言完成一个简易的 MapReduce 框架以及 Word Count 任务。</p>
-<p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/mapreduce.pdf">Google MapReduce 论文</a></em></strong></p>
-<p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/lab1.pdf">Lab 1 详细描述文档</a></em></strong></p>]]>
+    <![CDATA[<p>6.824 的第一个Lab，实验要求是用 go 语言完成一个简易的 MapReduce 框架以及 Word Count 任务。</p>]]>
     
     </summary>
+    
+      <category term="6.824" scheme="http://www.raynxxx.com/tags/6-824/"/>
     
       <category term="go" scheme="http://www.raynxxx.com/tags/go/"/>
     
@@ -62,12 +62,12 @@
     <link href="http://www.raynxxx.com/2015/10/24/6.824_schedule/"/>
     <id>http://www.raynxxx.com/2015/10/24/6.824_schedule/</id>
     <published>2015-10-24T08:23:31.000Z</published>
-    <updated>2015-10-25T08:28:44.812Z</updated>
+    <updated>2015-10-25T10:31:31.271Z</updated>
     <content type="html"><![CDATA[<p>出于对分布式系统的兴趣，开始跟 <strong><code>MIT 6.824 Spring 2015</code></strong> 的课程，课程主页在<a href="http://nil.csail.mit.edu/6.824/2015/schedule.html" target="_blank" rel="external">这里</a>， 6.824 是 MIT 的一门研究生课程，不论深度还是广度可见一斑，加上大三课程量繁琐，所以应该会花比较长的时间来完成它。</p>
 <p>这门课的 Lab 采用 go 语言，我通过 <a href="http://www.golang-book.com/" target="_blank" rel="external">An Introduction to Programming in Go</a> 这本小册子大概了解了一下 go 的语法。</p>
 <a id="more"></a>
-<h2 id="计划表">计划表</h2><h4 id="lecture_1_:_Introduction">lecture 1 : Introduction</h4><p>Preparation: Read <a href="">MapReduce</a></p>
-<p>Assigned: <a href="">Lab 1 详解</a></p>
+<h3 id="计划表">计划表</h3><h4 id="lecture_1_:_Introduction">lecture 1 : Introduction</h4><p>Preparation: Read <a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/mapreduce.pdf" target="_blank" rel="external">MapReduce</a><br>Assigned: <a href="/2015/10/25/6.824_lab1/">Lab 1 详解</a></p>
+<h4 id="lecture_2_:_RPC_and_threads">lecture 2 : RPC and threads</h4><p>Look <a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec2/l-rpc%20code.pdf" target="_blank" rel="external"><strong>toy rpc code</strong></a><br>Do the <a href="http://tour.golang.org/" target="_blank" rel="external">Online Go tutorial</a></p>
 ]]></content>
     <summary type="html">
     <![CDATA[<p>出于对分布式系统的兴趣，开始跟 <strong><code>MIT 6.824 Spring 2015</code></strong> 的课程，课程主页在<a href="http://nil.csail.mit.edu/6.824/2015/schedule.html">这里</a>， 6.824 是 MIT 的一门研究生课程，不论深度还是广度可见一斑，加上大三课程量繁琐，所以应该会花比较长的时间来完成它。</p>
@@ -132,19 +132,17 @@
   </entry>
   
   <entry>
-    <title><![CDATA[deque 大法好]]></title>
+    <title><![CDATA[STL源码分析: deque]]></title>
     <link href="http://www.raynxxx.com/2015/06/04/deque_dafahao/"/>
     <id>http://www.raynxxx.com/2015/06/04/deque_dafahao/</id>
     <published>2015-06-04T14:13:11.000Z</published>
-    <updated>2015-06-04T14:25:30.815Z</updated>
+    <updated>2015-10-25T08:38:13.920Z</updated>
     <content type="html"><![CDATA[<p>在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。</p>
 <a id="more"></a>
 <h2 id="deque概述">deque概述</h2><p>对于C++ STL中的deque是一种双向开口的顺序容器，可以支持头尾两端的插入删除操作。类似的还有大家熟知的vector，由于vector的动态分配特性所致，虽然可以头尾两端操作，但是效率极差，达到了O(n)。再来看在deque中，这个操作却是常数级别的，为什么呢？接下来我要说到的就是这个。</p>
 <h2 id="deque的内存结构">deque的内存结构</h2><p>deque从表面上看起来是一段连续空间，但是内部实则不然，deque内部其实是由一段一段的定量连续空间接起来的，每当空间不足，就新开辟一段定量连续空间，然后把它接过去就OK了，这就是它和vector最大不同，当然代价就是特别设计的迭代器有那么点复杂。</p>
 <p>deque采用了一块map作为主控中心，它是一小段连续空间，每个节点指向另一段定量连续空间(称为缓冲区，这里才是deque数据的真正存储地带)，deque的实际定义如下，BufSize就是一段缓冲区的大小。</p>
-<blockquote>
-<p>template &lt;class T, class Alloc = alloc, size_t BufSize&gt;<br>class deuqe {…}</p>
-</blockquote>
+<figure class="highlight nimrod"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &amp;lt;class T, class <span class="type">Alloc</span> = alloc, size_t <span class="type">BufSize</span>&amp;gt;</span><br><span class="line">class deuqe <span class="decorator">&#123;...&#125;</span></span><br></pre></td></tr></table></figure>
 <h2 id="deque的迭代器">deque的迭代器</h2>]]></content>
     <summary type="html">
     <![CDATA[<p>在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。</p>]]>
@@ -280,11 +278,11 @@
   </entry>
   
   <entry>
-    <title><![CDATA[手把手用Java来做一个简易HttpServer]]></title>
+    <title><![CDATA[用Java来做一个简易HttpServer]]></title>
     <link href="http://www.raynxxx.com/2015/01/11/java_httpserver/"/>
     <id>http://www.raynxxx.com/2015/01/11/java_httpserver/</id>
     <published>2015-01-11T12:04:11.000Z</published>
-    <updated>2015-10-25T08:20:44.868Z</updated>
+    <updated>2015-10-25T10:26:32.847Z</updated>
     <content type="html"><![CDATA[<h2 id="简单的HTTP服务端">简单的HTTP服务端</h2><h3 id="演示">演示</h3><p><strong>利用Java的<code>套接字(Socket)</code>编程实现的一个很简单的HTTP服务端，能够对客户断的请求进行基本的响应。</strong><br><strong>运行服务，默认监听8080端口，等待客户端请求。</strong></p>
 <p><img src="http://raynxxx.qiniudn.com/img/java/截图20150111202031.png" alt=""></p>
 <a id="more"></a>
