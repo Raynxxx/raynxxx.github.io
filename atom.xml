@@ -5,7 +5,7 @@
   <subtitle><![CDATA[Rayn的个人博客]]></subtitle>
   <link href="/atom.xml" rel="self"/>
   <link href="http://www.raynxxx.com//"/>
-  <updated>2015-10-25T10:26:16.943Z</updated>
+  <updated>2015-12-13T06:56:52.481Z</updated>
   <id>http://www.raynxxx.com//</id>
   
   <author>
@@ -17,17 +17,16 @@
   
   <entry>
     <title><![CDATA[MIT 6.824 Lab 1：MapReduce]]></title>
-    <link href="http://www.raynxxx.com/2015/10/25/6.824_lab1/"/>
-    <id>http://www.raynxxx.com/2015/10/25/6.824_lab1/</id>
-    <published>2015-10-25T08:23:31.000Z</published>
-    <updated>2015-10-25T10:26:16.943Z</updated>
+    <link href="http://www.raynxxx.com/2015/12/13/6.824_lab1/"/>
+    <id>http://www.raynxxx.com/2015/12/13/6.824_lab1/</id>
+    <published>2015-12-13T08:23:31.000Z</published>
+    <updated>2015-12-13T06:56:52.481Z</updated>
     <content type="html"><![CDATA[<p>6.824 的第一个Lab，实验要求是用 go 语言完成一个简易的 MapReduce 框架以及 Word Count 任务。</p>
 <a id="more"></a>
-<h2 id="预备">预备</h2><p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/mapreduce.pdf" target="_blank" rel="external">Google MapReduce 论文</a></em></strong></p>
-<p><strong><em><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/lab1.pdf" target="_blank" rel="external">Lab 1 详细描述文档</a></em></strong></p>
-<h2 id="Part_I：Word_Count">Part I：Word Count</h2><p>Part 1 的任务是完成 Word Count 计算过程的 <code>Map</code> 和 <code>Reduce</code> 函数。在这之前，我们要先来看一看课程提供的代码 <code>wc.go</code> 和 <code>mapreduce.go</code>，第一个 Test 的入口函数是</p>
+<h2 id="预备">预备</h2><p><strong><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/mapreduce.pdf" target="_blank" rel="external">Google MapReduce 论文</a></strong><br><strong><a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/lab1.pdf" target="_blank" rel="external">Lab 1 详细描述文档</a></strong></p>
+<h2 id="Part_I：Word_Count">Part I：Word Count</h2><p>Part I 的任务是完成 Word Count 计算过程的 <code>Map</code> 和 <code>Reduce</code> 函数。在这之前，我们要先来看一看课程提供的代码 <code>wc.go</code> 和 <code>mapreduce.go</code>，第一个 Test 的入口函数是</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RunSingle(<span class="number">5</span>, <span class="number">3</span>, os.Args[<span class="number">2</span>], Map, Reduce)</span><br></pre></td></tr></table></figure>
-<p>把这个读懂，理清一遍运行过程，Part 1 就没问题了。</p>
+<p>把这个读懂，理清一遍运行过程，Part I 就没问题了。</p>
 <figure class="highlight mel"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Run jobs sequentially.</span></span><br><span class="line">func RunSingle(nMap <span class="keyword">int</span>, nReduce <span class="keyword">int</span>, <span class="keyword">file</span> <span class="keyword">string</span>,</span><br><span class="line">	Map func(<span class="keyword">string</span>) <span class="variable">*list</span>.List,</span><br><span class="line">	Reduce func(<span class="keyword">string</span>, <span class="variable">*list</span>.List) <span class="keyword">string</span>) &#123;</span><br><span class="line">	mr := InitMapReduce(nMap, nReduce, <span class="keyword">file</span>, <span class="string">""</span>)</span><br><span class="line">	mr.Split(mr.<span class="keyword">file</span>)</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; nMap; i++ &#123;</span><br><span class="line">		DoMap(i, mr.<span class="keyword">file</span>, mr.nReduce, Map)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; mr.nReduce; i++ &#123;</span><br><span class="line">		DoReduce(i, mr.<span class="keyword">file</span>, mr.nMap, Reduce)</span><br><span class="line">	&#125;</span><br><span class="line">	mr.Merge()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p><code>RunSingle()</code> 函数接受 5 个参数 Map，Reduce 过程的数量，待处理的文件 file，以及 Map 和 Reduce 函数。<br>先是初始化一个 MapReduce 结构，然后将 file 通过 <code>Split()</code> 函数分裂成几乎等大小的 <code>nMap</code> 个中间文件，然后对每一个中间文件进行 <code>DoMap()</code> 处理。</p>
 <figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Read split for job, call Map for that split, and create nreduce</span></span><br><span class="line"><span class="comment">// partitions.</span></span><br><span class="line">func DoMap(JobNumber int, fileName string,</span><br><span class="line">	nreduce int, Map func(string) *<span class="keyword">list</span>.<span class="keyword">List</span>) &#123;</span><br><span class="line">	name := MapName(fileName, JobNumber)</span><br><span class="line">	<span class="comment">// 省略错误处理</span></span><br><span class="line">	res := Map(<span class="literal">string</span>(b))</span><br><span class="line">	<span class="comment">// <span class="label">XXX a bit inefficient. could open r files and run over list once</span></span></span><br><span class="line">	<span class="keyword">for</span> r := 0; r &lt; nreduce; r++ &#123;</span><br><span class="line">		<span class="keyword">file</span>, <span class="keyword">err</span> = os.Create(ReduceName(fileName, JobNumber, r))</span><br><span class="line">		<span class="comment">// 省略错误处理</span></span><br><span class="line">		<span class="keyword">enc</span> := json.NewEncoder(<span class="keyword">file</span>)</span><br><span class="line">		<span class="keyword">for</span> <span class="keyword">e</span> := res.Front(); <span class="keyword">e</span> != nil; <span class="keyword">e</span> = <span class="keyword">e</span>.Next() &#123;</span><br><span class="line">			kv := <span class="keyword">e</span>.Value.(KeyValue)</span><br><span class="line">			<span class="keyword">if</span> ihash(kv.Key)%uint32(nreduce) == uint32(r) &#123;</span><br><span class="line">				<span class="keyword">err</span> := <span class="keyword">enc</span>.<span class="keyword">Encode</span>(&amp;kv)</span><br><span class="line">				<span class="keyword">if</span> <span class="keyword">err</span> != nil &#123;</span><br><span class="line">					<span class="keyword">log</span>.Fatal(<span class="string">"DoMap: marshall "</span>, <span class="keyword">err</span>)</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">file</span>.<span class="keyword">Close</span>()</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -42,8 +41,26 @@
 <p>注释中也说了，将 key 对应的 List 里面的 values 加起来返回一个总和，于是这个函数也是很简单的实现</p>
 <figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">func Reduce(key string, values *<span class="keyword">list</span>.<span class="keyword">List</span>) string &#123;</span><br><span class="line">	<span class="keyword">var</span> <span class="keyword">sum</span> int = 0</span><br><span class="line">	<span class="keyword">for</span> <span class="keyword">e</span> := values.Front(); <span class="keyword">e</span> != nil; <span class="keyword">e</span> = <span class="keyword">e</span>.Next() &#123;</span><br><span class="line">		<span class="keyword">count</span>, _ := strconv.Atoi(<span class="keyword">e</span>.Value.(string))</span><br><span class="line">		<span class="keyword">sum</span> += <span class="keyword">count</span></span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> strconv.Itoa(<span class="keyword">sum</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>然后回到 <code>DoReduce()</code> 函数，将处理完成的 key/value pairs 写到结果文件去，再回到 <code>RunSingle()</code>，调用 Merge() 函数将 <code>nReduce</code> 个结果文件合并成最后的输出文件。</p>
-<p>到这里，Part 1 就算完成了</p>
-<h2 id="Part_II:_Distributing_MapReduce_jobs">Part II: Distributing MapReduce jobs</h2><h2 id="Part_III:_Handling_worker_failures">Part III: Handling worker failures</h2>]]></content>
+<p>到这里，Part I 就算完成了</p>
+<h2 id="Part_II:_Distributing_MapReduce_jobs">Part II: Distributing MapReduce jobs</h2><h2 id="Part_III:_Handling_worker_failures">Part III: Handling worker failures</h2><p>刚完成的 Part I 的程序是顺序执行的，真实的 MapReduce 是并发执行来提高性能的，Part II 的任务是将 Part I 的 Word Count 程序加入并发支持。实验给的代码是通过将进程分为 master 和 worker，worker 完成实际的任务，有多个，master 则只有一个， 类似于一个管理者，通过 RPC 管理所有 Worker，同时给 worker 分发任务，并且接受 worker 返回的结果。 Part III 实际上是 Part II 的延续完善，处理 worker 失败的情况。</p>
+<p>同样的，先从测试开始分析。</p>
+<figure class="highlight aspectj"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">func setup() *MapReduce &#123;</span><br><span class="line">	file := makeInput()</span><br><span class="line">	master := port(<span class="string">"master"</span>)</span><br><span class="line">	mr := MakeMapReduce(nMap, nReduce, file, master)</span><br><span class="line">	<span class="keyword">return</span> mr</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">func TestBasic(t *testing.T) &#123;</span><br><span class="line">	fmt.Printf(<span class="string">"Test: Basic mapreduce ...\n"</span>)</span><br><span class="line">	mr := setup()</span><br><span class="line">	<span class="keyword">for</span> i := 0; i &lt; <span class="number">2</span>; i++ &#123;</span><br><span class="line">		go RunWorker(mr.MasterAddress, port(<span class="string">"worker"</span>+strconv.Itoa(i)),</span><br><span class="line">			MapFunc, ReduceFunc, -<span class="number">1</span>)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">// Wait until MR is done</span></span><br><span class="line">	&lt;-mr.DoneChannel</span><br><span class="line">	check(t, mr.file)</span><br><span class="line">	checkWorker(t, mr.stats)</span><br><span class="line">	cleanup(mr)</span><br><span class="line">	fmt.Printf(<span class="string">"  ... Basic Passed\n"</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function">func <span class="title">TestManyFailures</span><span class="params">(t *testing.T)</span> </span>&#123;</span><br><span class="line">	fmt.Printf(<span class="string">"Test: One ManyFailures mapreduce ...\n"</span>)</span><br><span class="line">	mr := setup()</span><br><span class="line">	i := 0</span><br><span class="line">	done := <span class="keyword">false</span></span><br><span class="line">	<span class="keyword">for</span> !done &#123;</span><br><span class="line">		select &#123;</span><br><span class="line">		<span class="keyword">case</span> done = &lt;-mr.DoneChannel:</span><br><span class="line">			check(t, mr.file)</span><br><span class="line">			cleanup(mr)</span><br><span class="line">			<span class="keyword">break</span></span><br><span class="line">		<span class="keyword">default</span>:</span><br><span class="line">			// Start 2 workers each sec. The workers fail after 10 jobs</span><br><span class="line">			w := port(<span class="string">"worker"</span> + strconv.Itoa(i))</span><br><span class="line">			go RunWorker(mr.MasterAddress, w, MapFunc, ReduceFunc, 10)</span><br><span class="line">			i++</span><br><span class="line">			w = port(<span class="string">"worker"</span> + strconv.Itoa(i))</span><br><span class="line">			go RunWorker(mr.MasterAddress, w, MapFunc, ReduceFunc, 10)</span><br><span class="line">			i++</span><br><span class="line">			time.Sleep(1 * time.Second)</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	fmt.Printf(<span class="string">"  ... Many Failures Passed\n"</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>首先看到通过 <code>mr := setup()</code> 初始化了一个mapreduce对象，然后分配了两个 worker 来完成任务。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">// <span class="operator"><span class="keyword">Set</span> up a <span class="keyword">connection</span> <span class="keyword">with</span> the <span class="keyword">master</span>, <span class="keyword">register</span> <span class="keyword">with</span> the <span class="keyword">master</span>,</span><br><span class="line">// <span class="keyword">and</span> <span class="keyword">wait</span> <span class="keyword">for</span> jobs <span class="keyword">from</span> the <span class="keyword">master</span></span><br><span class="line">func RunWorker(MasterAddress <span class="keyword">string</span>, me <span class="keyword">string</span>,</span><br><span class="line">	MapFunc func(<span class="keyword">string</span>) *<span class="keyword">list</span>.<span class="keyword">List</span>,</span><br><span class="line">	ReduceFunc func(<span class="keyword">string</span>, *<span class="keyword">list</span>.<span class="keyword">List</span>) <span class="keyword">string</span>, nRPC <span class="built_in">int</span>) &#123;</span><br><span class="line">	DPrintf(<span class="string">"RunWorker %s\n"</span>, me)</span><br><span class="line">	wk := <span class="keyword">new</span>(Worker)</span><br><span class="line">	wk.<span class="keyword">name</span> = me</span><br><span class="line">	wk.<span class="keyword">Map</span> = MapFunc</span><br><span class="line">	wk.Reduce = ReduceFunc</span><br><span class="line">	wk.nRPC = nRPC</span><br><span class="line">	rpcs := rpc.NewServer()</span><br><span class="line">	rpcs.<span class="keyword">Register</span>(wk)</span><br><span class="line">	os.Remove(me) // <span class="keyword">only</span> needed <span class="keyword">for</span> <span class="string">"unix"</span></span><br><span class="line">	<span class="keyword">l</span>, <span class="keyword">e</span> := net.Listen(<span class="string">"unix"</span>, me)</span><br><span class="line">	<span class="keyword">if</span> <span class="keyword">e</span> != nil &#123;</span><br><span class="line">		<span class="keyword">log</span>.Fatal(<span class="string">"RunWorker: worker "</span>, me, <span class="string">" error: "</span>, <span class="keyword">e</span>)</span><br><span class="line">	&#125;</span><br><span class="line">	wk.<span class="keyword">l</span> = <span class="keyword">l</span></span><br><span class="line">	<span class="keyword">Register</span>(MasterAddress, me)</span><br><span class="line"></span><br><span class="line">	// DON<span class="string">'T MODIFY CODE BELOW</span><br><span class="line">	for wk.nRPC != 0 &#123;</span><br><span class="line">		conn, err := wk.l.Accept()</span><br><span class="line">		if err == nil &#123;</span><br><span class="line">			wk.nRPC -= 1</span><br><span class="line">			go rpcs.ServeConn(conn)</span><br><span class="line">			wk.nJobs += 1</span><br><span class="line">		&#125; else &#123;</span><br><span class="line">			break</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	wk.l.Close()</span><br><span class="line">	DPrintf("RunWorker %s exit\n", me)</span><br><span class="line">&#125;</span></span></span><br></pre></td></tr></table></figure>
+<p>从 RunWorker 这个函数中可以看到，先是初始化一个 worker，然后通过 RPC 注册到 master 上，并且等待来自 master 的任务分配，函数中有一个 <code>nRPC</code> 参数，指定了接受任务的数目，归零后就关闭这个 worker。</p>
+<p>接下来看一下 mapreduce 的 run() 函数。</p>
+<figure class="highlight roboconf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">// Run jobs in parallel, assuming a shared file system</span><br><span class="line"><span class="component">func (mr *MapReduce) Run() &#123;</span><br><span class="line">	fmt<span class="string">.Printf("Run</span> mapreduce job %s %s\n", mr<span class="string">.MasterAddress</span>, mr<span class="string">.file)</span></span><br><span class="line"></span><br><span class="line">	mr<span class="string">.Split(mr.file)</span></span><br><span class="line">	mr<span class="string">.stats</span> = mr<span class="string">.RunMaster()</span></span><br><span class="line">	mr<span class="string">.Merge()</span></span><br><span class="line">	mr<span class="string">.CleanupRegistration()</span></span><br><span class="line"></span><br><span class="line">	fmt<span class="string">.Printf("%s:</span> MapReduce done\n", mr<span class="string">.MasterAddress)</span></span><br><span class="line"></span><br><span class="line">	mr<span class="string">.DoneChannel</span> &lt;- true</span><br><span class="line">&#125;</span></span><br></pre></td></tr></table></figure>
+<p>首先是将输入文件分开成多份，然后调用 RunMaster() 函数，开始运作 master，以上大部分代码在实验中都已经提供了，重点需要完成的就是 RunMaster() 函数，管理 worker 的运行。</p>
+<p>以下是我的代码，仅供参考</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">func</span> (mr *MapReduce) RunMaster() *list.List &#123;</span><br><span class="line">	<span class="comment">// Your code here</span></span><br><span class="line">	mapChan := <span class="built_in">make</span>(<span class="keyword">chan</span> <span class="typename">int</span>, mr.nMap)</span><br><span class="line">	reduceChan := <span class="built_in">make</span>(<span class="keyword">chan</span> <span class="typename">int</span>, mr.nReduce)</span><br><span class="line"></span><br><span class="line">	handOutJob := <span class="keyword">func</span>(address <span class="typename">string</span>, operation JobType, index <span class="typename">int</span>) <span class="typename">bool</span> &#123;</span><br><span class="line">		jobArgs := &amp;DoJobArgs&#123;mr.file, operation, index, <span class="number">0</span>&#125;</span><br><span class="line">		reply := &amp;DoJobReply&#123;&#125;</span><br><span class="line">		<span class="keyword">switch</span> operation &#123;</span><br><span class="line">		<span class="keyword">case</span> Map:</span><br><span class="line">			jobArgs.NumOtherPhase = mr.nReduce</span><br><span class="line">		<span class="keyword">case</span> Reduce:</span><br><span class="line">			jobArgs.NumOtherPhase = mr.nMap</span><br><span class="line">		<span class="keyword">default</span>:</span><br><span class="line">			fmt.Printf(<span class="string">"handOutJob: unknown Operation\n"</span>)</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> call(address, <span class="string">"Worker.DoJob"</span>, jobArgs, reply)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	scheduler := <span class="keyword">func</span>(okChan <span class="keyword">chan</span> <span class="typename">int</span>, operation JobType, index <span class="typename">int</span>) &#123;</span><br><span class="line">		<span class="keyword">for</span> &#123;</span><br><span class="line">			<span class="keyword">var</span> workerAddr <span class="typename">string</span></span><br><span class="line">			<span class="keyword">var</span> isOk <span class="typename">bool</span> = <span class="constant">false</span></span><br><span class="line">			<span class="keyword">select</span> &#123;</span><br><span class="line">			<span class="keyword">case</span> workerAddr = &lt;-mr.idleChannel:</span><br><span class="line">				isOk = handOutJob(workerAddr, operation, index)</span><br><span class="line">			<span class="keyword">case</span> workerAddr = &lt;-mr.registerChannel:</span><br><span class="line">				mr.Workers[workerAddr] = &amp;WorkerInfo&#123;workerAddr&#125;</span><br><span class="line">				isOk = handOutJob(workerAddr, operation, index)</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">if</span> isOk &#123;</span><br><span class="line">				okChan &lt;- index</span><br><span class="line">				mr.idleChannel &lt;- workerAddr</span><br><span class="line">				<span class="keyword">return</span></span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; mr.nMap; i++ &#123;</span><br><span class="line">		<span class="keyword">go</span> scheduler(mapChan, Map, i)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; mr.nMap; i++ &#123;</span><br><span class="line">		id := &lt;-mapChan</span><br><span class="line">		fmt.Printf(<span class="string">"Map %d has done\n"</span>, id)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; mr.nReduce; i++ &#123;</span><br><span class="line">		<span class="keyword">go</span> scheduler(reduceChan, Reduce, i)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; mr.nReduce; i++ &#123;</span><br><span class="line">		id := &lt;-reduceChan</span><br><span class="line">		fmt.Printf(<span class="string">"Reduce %d has done\n"</span>, id)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> mr.KillWorkers()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>运用了 go 语言的 goroutine 和 Channel 可以十分简洁的实现需求。 我实现了两个函数：</p>
+<ol>
+<li>scheduler，通过 Channel 收集空闲的 worker 或者已经完成任务的 worker，并分发任务给可用的 worker。</li>
+<li>handOutJob，分类型，将任务的输入信息发给 worker ，接受返回的成功信息。</li>
+</ol>
+<p>通过 idleChannel，接受空闲 worker 信息，还有一个 registerChannel 接受注册在 master 上的 worker 信息，然后并发的给可用 worker 发布任务。</p>
+<p>最后完成所有任务之后，释放资源。至此 Part II，Part III 都完成了，输入 go test 检验成果。 </p>
+]]></content>
     <summary type="html">
     <![CDATA[<p>6.824 的第一个Lab，实验要求是用 go 语言完成一个简易的 MapReduce 框架以及 Word Count 任务。</p>]]>
     
@@ -62,12 +79,12 @@
     <link href="http://www.raynxxx.com/2015/10/24/6.824_schedule/"/>
     <id>http://www.raynxxx.com/2015/10/24/6.824_schedule/</id>
     <published>2015-10-24T08:23:31.000Z</published>
-    <updated>2015-10-25T10:31:31.271Z</updated>
+    <updated>2015-12-13T06:43:23.163Z</updated>
     <content type="html"><![CDATA[<p>出于对分布式系统的兴趣，开始跟 <strong><code>MIT 6.824 Spring 2015</code></strong> 的课程，课程主页在<a href="http://nil.csail.mit.edu/6.824/2015/schedule.html" target="_blank" rel="external">这里</a>， 6.824 是 MIT 的一门研究生课程，不论深度还是广度可见一斑，加上大三课程量繁琐，所以应该会花比较长的时间来完成它。</p>
 <p>这门课的 Lab 采用 go 语言，我通过 <a href="http://www.golang-book.com/" target="_blank" rel="external">An Introduction to Programming in Go</a> 这本小册子大概了解了一下 go 的语法。</p>
 <a id="more"></a>
-<h3 id="计划表">计划表</h3><h4 id="lecture_1_:_Introduction">lecture 1 : Introduction</h4><p>Preparation: Read <a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/mapreduce.pdf" target="_blank" rel="external">MapReduce</a><br>Assigned: <a href="/2015/10/25/6.824_lab1/">Lab 1 详解</a></p>
-<h4 id="lecture_2_:_RPC_and_threads">lecture 2 : RPC and threads</h4><p>Look <a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec2/l-rpc%20code.pdf" target="_blank" rel="external"><strong>toy rpc code</strong></a><br>Do the <a href="http://tour.golang.org/" target="_blank" rel="external">Online Go tutorial</a></p>
+<h3 id="计划表">计划表</h3><h4 id="lecture_1_:_Introduction">lecture 1 : Introduction</h4><p>Look <a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/l01.txt" target="_blank" rel="external"><strong>Introduction</strong></a><br>Preparation: Read <a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec1/mapreduce.pdf" target="_blank" rel="external">MapReduce</a><br>Assigned: <a href="/2015/10/25/6.824_lab1/">Lab 1 详解</a></p>
+<h4 id="lecture_2_:_RPC_and_threads">lecture 2 : RPC and threads</h4><p>Look <a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec2/l-rpc.pdf" target="_blank" rel="external"><strong>RPC and Threads</strong></a><br>Look <a href="https://github.com/Raynxxx/MIT-6.824/blob/master/lectures/lec2/l-rpc%20code.pdf" target="_blank" rel="external"><strong>toy rpc code</strong></a><br>Do the <a href="http://tour.golang.org/" target="_blank" rel="external">Online Go tutorial</a></p>
 ]]></content>
     <summary type="html">
     <![CDATA[<p>出于对分布式系统的兴趣，开始跟 <strong><code>MIT 6.824 Spring 2015</code></strong> 的课程，课程主页在<a href="http://nil.csail.mit.edu/6.824/2015/schedule.html">这里</a>， 6.824 是 MIT 的一门研究生课程，不论深度还是广度可见一斑，加上大三课程量繁琐，所以应该会花比较长的时间来完成它。</p>
@@ -80,6 +97,30 @@
       <category term="go" scheme="http://www.raynxxx.com/tags/go/"/>
     
       <category term="分布式系统" scheme="http://www.raynxxx.com/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F/"/>
+    
+  </entry>
+  
+  <entry>
+    <title><![CDATA[STL源码分析: deque]]></title>
+    <link href="http://www.raynxxx.com/2015/10/04/deque_dafahao/"/>
+    <id>http://www.raynxxx.com/2015/10/04/deque_dafahao/</id>
+    <published>2015-10-04T14:13:11.000Z</published>
+    <updated>2015-12-13T06:58:17.605Z</updated>
+    <content type="html"><![CDATA[<p>在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。</p>
+<a id="more"></a>
+<h2 id="deque概述">deque概述</h2><p>对于C++ STL中的deque是一种双向开口的顺序容器，可以支持头尾两端的插入删除操作。类似的还有大家熟知的vector，由于vector的动态分配特性所致，虽然可以头尾两端操作，但是效率极差，达到了O(n)。再来看在deque中，这个操作却是常数级别的，为什么呢？接下来我要说到的就是这个。</p>
+<h2 id="deque的内存结构">deque的内存结构</h2><p>deque从表面上看起来是一段连续空间，但是内部实则不然，deque内部其实是由一段一段的定量连续空间接起来的，每当空间不足，就新开辟一段定量连续空间，然后把它接过去就OK了，这就是它和vector最大不同，当然代价就是特别设计的迭代器有那么点复杂。</p>
+<p>deque采用了一块map作为主控中心，它是一小段连续空间，每个节点指向另一段定量连续空间(称为缓冲区，这里才是deque数据的真正存储地带)，deque的实际定义如下，BufSize就是一段缓冲区的大小。</p>
+<figure class="highlight nimrod"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;class T, class <span class="type">Alloc</span> = alloc, size_t <span class="type">BufSize</span>&gt;</span><br><span class="line">class deuqe <span class="decorator">&#123;...&#125;</span></span><br></pre></td></tr></table></figure>
+<h2 id="deque的迭代器">deque的迭代器</h2>]]></content>
+    <summary type="html">
+    <![CDATA[<p>在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。</p>]]>
+    
+    </summary>
+    
+      <category term="C++" scheme="http://www.raynxxx.com/tags/C/"/>
+    
+      <category term="STL" scheme="http://www.raynxxx.com/tags/STL/"/>
     
   </entry>
   
@@ -132,35 +173,11 @@
   </entry>
   
   <entry>
-    <title><![CDATA[STL源码分析: deque]]></title>
-    <link href="http://www.raynxxx.com/2015/06/04/deque_dafahao/"/>
-    <id>http://www.raynxxx.com/2015/06/04/deque_dafahao/</id>
-    <published>2015-06-04T14:13:11.000Z</published>
-    <updated>2015-10-25T08:38:13.920Z</updated>
-    <content type="html"><![CDATA[<p>在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。</p>
-<a id="more"></a>
-<h2 id="deque概述">deque概述</h2><p>对于C++ STL中的deque是一种双向开口的顺序容器，可以支持头尾两端的插入删除操作。类似的还有大家熟知的vector，由于vector的动态分配特性所致，虽然可以头尾两端操作，但是效率极差，达到了O(n)。再来看在deque中，这个操作却是常数级别的，为什么呢？接下来我要说到的就是这个。</p>
-<h2 id="deque的内存结构">deque的内存结构</h2><p>deque从表面上看起来是一段连续空间，但是内部实则不然，deque内部其实是由一段一段的定量连续空间接起来的，每当空间不足，就新开辟一段定量连续空间，然后把它接过去就OK了，这就是它和vector最大不同，当然代价就是特别设计的迭代器有那么点复杂。</p>
-<p>deque采用了一块map作为主控中心，它是一小段连续空间，每个节点指向另一段定量连续空间(称为缓冲区，这里才是deque数据的真正存储地带)，deque的实际定义如下，BufSize就是一段缓冲区的大小。</p>
-<figure class="highlight nimrod"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &amp;lt;class T, class <span class="type">Alloc</span> = alloc, size_t <span class="type">BufSize</span>&amp;gt;</span><br><span class="line">class deuqe <span class="decorator">&#123;...&#125;</span></span><br></pre></td></tr></table></figure>
-<h2 id="deque的迭代器">deque的迭代器</h2>]]></content>
-    <summary type="html">
-    <![CDATA[<p>在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。</p>]]>
-    
-    </summary>
-    
-      <category term="C++" scheme="http://www.raynxxx.com/tags/C/"/>
-    
-      <category term="STL" scheme="http://www.raynxxx.com/tags/STL/"/>
-    
-  </entry>
-  
-  <entry>
     <title><![CDATA[MiniSTL Project]]></title>
     <link href="http://www.raynxxx.com/2015/01/31/ministl/"/>
     <id>http://www.raynxxx.com/2015/01/31/ministl/</id>
     <published>2015-01-31T06:57:54.000Z</published>
-    <updated>2015-03-25T08:31:05.247Z</updated>
+    <updated>2015-12-13T06:56:18.821Z</updated>
     <content type="html"><![CDATA[<p><blockquote class="blockquote-center"><br>概要<br>STL即Standard Template Library，标准模板库，是C++十分重要的一部分。如侯捷所说，源码面前了无秘密，99.99%的程序员所写的程序在STL前都是三流水准。<br></blockquote><br><a id="more"></a></p>
 <p>项目: 一个STL的子集，采用C++11实现STL的基本组件，各类容器和算法<br>开发语言:  <code>C++11</code><br>编译环境:  <code>Visual Studio Community 2013</code><br>参考资料1: <code>STL源码剖析 侯捷著</code><br>参考资料1: <code>gcc 4.9 源代码</code> <a href="https://github.com/gcc-mirror/gcc/tree/master/libstdc%2B%2B-v3/include" target="_blank" rel="external">点我</a><br>代码放在了github上: <a href="https://github.com/Raynxxx/MiniSTL" target="_blank" rel="external"><strong>MiniSTL</strong></a></p>
 <h2 id="项目计划">项目计划</h2><table>
@@ -168,100 +185,146 @@
 <tr>
 <th>基本组件</th>
 <th>进度</th>
+<th>链接</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>空间配置器</td>
 <td>100%</td>
-</tr>
-<tr>
-<td>uninitialized</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>type traits</td>
-<td>100%</td>
+<td>Allocator.h, Alloc.h, Alloc.cpp, Construct.h</td>
 </tr>
 <tr>
 <td>iterator</td>
 <td>100%</td>
+<td>MiniSTL/Iterator.h</td>
 </tr>
 <tr>
 <td>reverse_iterator</td>
 <td>100%</td>
+<td>ReverseIterator.h</td>
 </tr>
 <tr>
-<td>string</td>
-<td>15%</td>
+<td>Algorithm</td>
+<td>20%</td>
+<td>Algo.h, AlgoBase.h, Algorithm.h</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>进度</th>
+<th>链接</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>uninitialized</td>
+<td>100%</td>
+<td>Uninitialized.h</td>
+</tr>
+<tr>
+<td>type_traits</td>
+<td>50%</td>
+<td>TypeTraits.h</td>
 </tr>
 <tr>
 <td>pair</td>
+<td>100%</td>
+<td>Pair.h</td>
+</tr>
+<tr>
+<td>heap</td>
+<td>100%</td>
+<td>Heap.h</td>
+</tr>
+<tr>
+<td>rb_tree</td>
+<td>20%</td>
+<td>Tree.h</td>
+</tr>
+<tr>
+<td>bitset</td>
+<td>–</td>
 <td>–</td>
 </tr>
 </tbody>
 </table>
-<p><br></p>
 <table>
 <thead>
 <tr>
 <th>顺序容器</th>
 <th>进度</th>
+<th>链接</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td>string</td>
+<td>80%</td>
+<td>String.h</td>
+</tr>
+<tr>
 <td>vector</td>
-<td>60%</td>
+<td>100%</td>
+<td>Vector.h</td>
+</tr>
+<tr>
+<td>list</td>
+<td>100%</td>
+<td>List.h</td>
+</tr>
+<tr>
+<td>deque</td>
+<td>100%</td>
+<td>Deque.h</td>
 </tr>
 </tbody>
 </table>
-<p><br></p>
+<blockquote>
+<p>计划加入一些QT的string接口</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>配接器</th>
+<th>进度</th>
+<th>链接</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>stack</td>
+<td>100%</td>
+<td>Stack.h</td>
+</tr>
+<tr>
+<td>queue</td>
+<td>100%</td>
+<td>Queue.h</td>
+</tr>
+<tr>
+<td>priority_queue</td>
+<td>100%</td>
+<td>Queue.h</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr>
 <th>关联容器</th>
 <th>进度</th>
+<th>链接</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td></td>
-</tr>
-</tbody>
-</table>
-<p><br></p>
-<table>
-<thead>
-<tr>
-<th>STL Algorithms</th>
-<th>进度</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>fill</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>fill_n</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>min</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>max</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>equal</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>swap</td>
-<td>100%</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
 </tr>
 </tbody>
 </table>

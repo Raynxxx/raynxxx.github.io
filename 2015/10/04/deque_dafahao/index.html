@@ -50,10 +50,10 @@
 <meta name="description" content="在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="STL源码分析: deque">
-<meta property="og:url" content="http://www.raynxxx.com/2015/06/04/deque_dafahao/index.html">
+<meta property="og:url" content="http://www.raynxxx.com/2015/10/04/deque_dafahao/index.html">
 <meta property="og:site_name" content="Rayn新天地">
 <meta property="og:description" content="在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。">
-<meta property="og:updated_time" content="2015-10-25T08:38:13.920Z">
+<meta property="og:updated_time" content="2015-12-13T06:58:17.605Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="STL源码分析: deque">
 <meta name="twitter:description" content="在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。">
@@ -222,8 +222,8 @@
         <div class="post-meta">
           <span class="post-time">
             发表于
-            <time itemprop="dateCreated" datetime="2015-06-04T22:13:11+08:00" content="2015-06-04">
-              2015-06-04
+            <time itemprop="dateCreated" datetime="2015-10-04T22:13:11+08:00" content="2015-10-04">
+              2015-10-04
             </time>
           </span>
 
@@ -233,8 +233,8 @@
             
               <span class="post-comments-count">
                 &nbsp; | &nbsp;
-                <a href="/2015/06/04/deque_dafahao/#comments" itemprop="discussionUrl">
-                  <span class="post-comments-count ds-thread-count" data-thread-key="2015/06/04/deque_dafahao/" itemprop="commentsCount"></span>
+                <a href="/2015/10/04/deque_dafahao/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count ds-thread-count" data-thread-key="2015/10/04/deque_dafahao/" itemprop="commentsCount"></span>
                 </a>
               </span>
             
@@ -258,7 +258,7 @@
 <h2 id="deque概述">deque概述</h2><p>对于C++ STL中的deque是一种双向开口的顺序容器，可以支持头尾两端的插入删除操作。类似的还有大家熟知的vector，由于vector的动态分配特性所致，虽然可以头尾两端操作，但是效率极差，达到了O(n)。再来看在deque中，这个操作却是常数级别的，为什么呢？接下来我要说到的就是这个。</p>
 <h2 id="deque的内存结构">deque的内存结构</h2><p>deque从表面上看起来是一段连续空间，但是内部实则不然，deque内部其实是由一段一段的定量连续空间接起来的，每当空间不足，就新开辟一段定量连续空间，然后把它接过去就OK了，这就是它和vector最大不同，当然代价就是特别设计的迭代器有那么点复杂。</p>
 <p>deque采用了一块map作为主控中心，它是一小段连续空间，每个节点指向另一段定量连续空间(称为缓冲区，这里才是deque数据的真正存储地带)，deque的实际定义如下，BufSize就是一段缓冲区的大小。</p>
-<figure class="highlight nimrod"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &amp;lt;class T, class <span class="type">Alloc</span> = alloc, size_t <span class="type">BufSize</span>&amp;gt;</span><br><span class="line">class deuqe <span class="decorator">&#123;...&#125;</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight nimrod"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;class T, class <span class="type">Alloc</span> = alloc, size_t <span class="type">BufSize</span>&gt;</span><br><span class="line">class deuqe <span class="decorator">&#123;...&#125;</span></span><br></pre></td></tr></table></figure>
 <h2 id="deque的迭代器">deque的迭代器</h2></span>
       
     </div>
@@ -278,16 +278,16 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2015/01/31/ministl/" rel="next" title="MiniSTL Project">
-                <i class="fa fa-chevron-left"></i> MiniSTL Project
+              <a href="/2015/08/03/cuit_acm_website/" rel="next" title="CUIT ACM Website 项目">
+                <i class="fa fa-chevron-left"></i> CUIT ACM Website 项目
               </a>
             
           </div>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2015/08/03/cuit_acm_website/" rel="prev" title="CUIT ACM Website 项目">
-                CUIT ACM Website 项目 <i class="fa fa-chevron-right"></i>
+              <a href="/2015/10/24/6.824_schedule/" rel="prev" title="MIT 6.824 Distributed Systems 计划">
+                MIT 6.824 Distributed Systems 计划 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -313,8 +313,8 @@
         
           <div class="comments" id="comments">
             
-              <div class="ds-thread" data-thread-key="2015/06/04/deque_dafahao/"
-                   data-title="STL源码分析: deque" data-url="http://www.raynxxx.com/2015/06/04/deque_dafahao/">
+              <div class="ds-thread" data-thread-key="2015/10/04/deque_dafahao/"
+                   data-title="STL源码分析: deque" data-url="http://www.raynxxx.com/2015/10/04/deque_dafahao/">
               </div>
             
           </div>

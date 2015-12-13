@@ -53,7 +53,7 @@
 <meta property="og:url" content="http://www.raynxxx.com/2015/01/31/ministl/index.html">
 <meta property="og:site_name" content="Rayn新天地">
 <meta property="og:description" content="概要STL即Standard Template Library，标准模板库，是C++十分重要的一部分。如侯捷所说，源码面前了无秘密，99.99%的程序员所写的程序在STL前都是三流水准。">
-<meta property="og:updated_time" content="2015-03-25T08:31:05.247Z">
+<meta property="og:updated_time" content="2015-12-13T06:56:18.821Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="MiniSTL Project">
 <meta name="twitter:description" content="概要STL即Standard Template Library，标准模板库，是C++十分重要的一部分。如侯捷所说，源码面前了无秘密，99.99%的程序员所写的程序在STL前都是三流水准。">
@@ -260,100 +260,146 @@
 <tr>
 <th>基本组件</th>
 <th>进度</th>
+<th>链接</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>空间配置器</td>
 <td>100%</td>
-</tr>
-<tr>
-<td>uninitialized</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>type traits</td>
-<td>100%</td>
+<td>Allocator.h, Alloc.h, Alloc.cpp, Construct.h</td>
 </tr>
 <tr>
 <td>iterator</td>
 <td>100%</td>
+<td>MiniSTL/Iterator.h</td>
 </tr>
 <tr>
 <td>reverse_iterator</td>
 <td>100%</td>
+<td>ReverseIterator.h</td>
 </tr>
 <tr>
-<td>string</td>
-<td>15%</td>
+<td>Algorithm</td>
+<td>20%</td>
+<td>Algo.h, AlgoBase.h, Algorithm.h</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>进度</th>
+<th>链接</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>uninitialized</td>
+<td>100%</td>
+<td>Uninitialized.h</td>
+</tr>
+<tr>
+<td>type_traits</td>
+<td>50%</td>
+<td>TypeTraits.h</td>
 </tr>
 <tr>
 <td>pair</td>
+<td>100%</td>
+<td>Pair.h</td>
+</tr>
+<tr>
+<td>heap</td>
+<td>100%</td>
+<td>Heap.h</td>
+</tr>
+<tr>
+<td>rb_tree</td>
+<td>20%</td>
+<td>Tree.h</td>
+</tr>
+<tr>
+<td>bitset</td>
+<td>–</td>
 <td>–</td>
 </tr>
 </tbody>
 </table>
-<p><br></p>
 <table>
 <thead>
 <tr>
 <th>顺序容器</th>
 <th>进度</th>
+<th>链接</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td>string</td>
+<td>80%</td>
+<td>String.h</td>
+</tr>
+<tr>
 <td>vector</td>
-<td>60%</td>
+<td>100%</td>
+<td>Vector.h</td>
+</tr>
+<tr>
+<td>list</td>
+<td>100%</td>
+<td>List.h</td>
+</tr>
+<tr>
+<td>deque</td>
+<td>100%</td>
+<td>Deque.h</td>
 </tr>
 </tbody>
 </table>
-<p><br></p>
+<blockquote>
+<p>计划加入一些QT的string接口</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>配接器</th>
+<th>进度</th>
+<th>链接</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>stack</td>
+<td>100%</td>
+<td>Stack.h</td>
+</tr>
+<tr>
+<td>queue</td>
+<td>100%</td>
+<td>Queue.h</td>
+</tr>
+<tr>
+<td>priority_queue</td>
+<td>100%</td>
+<td>Queue.h</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr>
 <th>关联容器</th>
 <th>进度</th>
+<th>链接</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td></td>
-</tr>
-</tbody>
-</table>
-<p><br></p>
-<table>
-<thead>
-<tr>
-<th>STL Algorithms</th>
-<th>进度</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>fill</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>fill_n</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>min</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>max</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>equal</td>
-<td>100%</td>
-</tr>
-<tr>
-<td>swap</td>
-<td>100%</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
 </tr>
 </tbody>
 </table>
@@ -384,8 +430,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2015/06/04/deque_dafahao/" rel="prev" title="STL源码分析: deque">
-                STL源码分析: deque <i class="fa fa-chevron-right"></i>
+              <a href="/2015/08/03/cuit_acm_website/" rel="prev" title="CUIT ACM Website 项目">
+                CUIT ACM Website 项目 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
