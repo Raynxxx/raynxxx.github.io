@@ -36,7 +36,7 @@
 
 
 
-  <meta name="keywords" content="C++,STL," />
+  <meta name="keywords" content="Flask,Java,Web,轮子," />
 
 
 
@@ -47,16 +47,22 @@
   <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=0.4.5.2" />
 
 
-<meta name="description" content="在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。">
+<meta name="description" content="前言一直钟爱于 Python 简单而又强大的语法，同时也喜欢静态语言的稳健性，前段时间使用 Python 的一个名为 Flask 的 Web 框架完成了一些项目，写起来感觉很棒，对比之前使用 Spring MVC + Hibernate 那一套 Java 框架开发的体验简直天差地别。于是萌生了在 Java 上开发一个类似于 Flask 那样的框架。
+Github 地址
+目前还在开发中，实现了部分特">
 <meta property="og:type" content="article">
-<meta property="og:title" content="STL源码分析: deque">
-<meta property="og:url" content="http://www.raynxxx.com/2015/10/04/deque_dafahao/index.html">
+<meta property="og:title" content="JFlask 诞生手记 01">
+<meta property="og:url" content="http://www.raynxxx.com/2016/07/17/jflask_01/index.html">
 <meta property="og:site_name" content="Rayn新天地">
-<meta property="og:description" content="在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。">
-<meta property="og:updated_time" content="2015-12-13T06:58:17.605Z">
+<meta property="og:description" content="前言一直钟爱于 Python 简单而又强大的语法，同时也喜欢静态语言的稳健性，前段时间使用 Python 的一个名为 Flask 的 Web 框架完成了一些项目，写起来感觉很棒，对比之前使用 Spring MVC + Hibernate 那一套 Java 框架开发的体验简直天差地别。于是萌生了在 Java 上开发一个类似于 Flask 那样的框架。
+Github 地址
+目前还在开发中，实现了部分特">
+<meta property="og:updated_time" content="2016-07-18T03:57:30.068Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="STL源码分析: deque">
-<meta name="twitter:description" content="在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。">
+<meta name="twitter:title" content="JFlask 诞生手记 01">
+<meta name="twitter:description" content="前言一直钟爱于 Python 简单而又强大的语法，同时也喜欢静态语言的稳健性，前段时间使用 Python 的一个名为 Flask 的 Web 框架完成了一些项目，写起来感觉很棒，对比之前使用 Spring MVC + Hibernate 那一套 Java 框架开发的体验简直天差地别。于是萌生了在 Java 上开发一个类似于 Flask 那样的框架。
+Github 地址
+目前还在开发中，实现了部分特">
 
 
 <script type="text/javascript" id="hexo.configuration">
@@ -68,7 +74,7 @@
 
 
 
-  <title> STL源码分析: deque | Rayn新天地 </title>
+  <title> JFlask 诞生手记 01 | Rayn新天地 </title>
 </head>
 
 <body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
@@ -213,7 +219,7 @@
             
             
               
-                STL源码分析: deque
+                JFlask 诞生手记 01
               
             
           </h1>
@@ -222,8 +228,8 @@
         <div class="post-meta">
           <span class="post-time">
             发表于
-            <time itemprop="dateCreated" datetime="2015-10-04T22:13:11+08:00" content="2015-10-04">
-              2015-10-04
+            <time itemprop="dateCreated" datetime="2016-07-17T20:04:11+08:00" content="2016-07-17">
+              2016-07-17
             </time>
           </span>
 
@@ -233,8 +239,8 @@
             
               <span class="post-comments-count">
                 &nbsp; | &nbsp;
-                <a href="/2015/10/04/deque_dafahao/#comments" itemprop="discussionUrl">
-                  <span class="post-comments-count ds-thread-count" data-thread-key="2015/10/04/deque_dafahao/" itemprop="commentsCount"></span>
+                <a href="/2016/07/17/jflask_01/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count ds-thread-count" data-thread-key="2016/07/17/jflask_01/" itemprop="commentsCount"></span>
                 </a>
               </span>
             
@@ -253,13 +259,21 @@
       
 
       
-        <span itemprop="articleBody"><p>在造(chao) STL的过程中，也会学习到一些比较厉害的新奇的设计，比如说deque，内存结构上有点巧妙。写一篇博客来记录一下。</p>
+        <span itemprop="articleBody"><h2 id="前言">前言</h2><p>一直钟爱于 Python 简单而又强大的语法，同时也喜欢静态语言的稳健性，前段时间<br>使用 Python 的一个名为 Flask 的 Web 框架完成了一些项目，写起来感觉很棒，<br>对比之前使用 Spring MVC + Hibernate 那一套 Java 框架开发的体验简直天差地别。<br>于是萌生了在 Java 上开发一个类似于 Flask 那样的框架。</p>
+<p><a href="https://github.com/Raynxxx/JFlask" target="_blank" rel="external">Github 地址</a></p>
+<p>目前还在开发中，实现了部分特性，接下来会写几篇博客记录一下我的想法和具体的实现思路。</p>
 <a id="more"></a>
-<h2 id="deque概述">deque概述</h2><p>对于C++ STL中的deque是一种双向开口的顺序容器，可以支持头尾两端的插入删除操作。类似的还有大家熟知的vector，由于vector的动态分配特性所致，虽然可以头尾两端操作，但是效率极差，达到了O(n)。再来看在deque中，这个操作却是常数级别的，为什么呢？接下来我要说到的就是这个。</p>
-<h2 id="deque的内存结构">deque的内存结构</h2><p>deque从表面上看起来是一段连续空间，但是内部实则不然，deque内部其实是由一段一段的定量连续空间接起来的，每当空间不足，就新开辟一段定量连续空间，然后把它接过去就OK了，这就是它和vector最大不同，当然代价就是特别设计的迭代器有那么点复杂。</p>
-<p>deque采用了一块map作为主控中心，它是一小段连续空间，每个节点指向另一段定量连续空间(称为缓冲区，这里才是deque数据的真正存储地带)，deque的实际定义如下，BufSize就是一段缓冲区的大小。</p>
-<figure class="highlight nimrod"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;class T, class <span class="type">Alloc</span> = alloc, size_t <span class="type">BufSize</span>&gt;</span><br><span class="line">class deuqe <span class="decorator">&#123;...&#125;</span></span><br></pre></td></tr></table></figure>
-<h2 id="deque的迭代器">deque的迭代器</h2></span>
+<h2 id="预期特性_(beta)">预期特性 (beta)</h2><ol>
+<li>基于Servlet 3.0 的 MVC 的 Web 架构</li>
+<li>实现注解完成 URL 配置，自动参数注入</li>
+<li>Restful 风格接口支持</li>
+<li>实现注解驱动的依赖注入</li>
+<li>使用简单的文件上传</li>
+<li>轻量的 ORM 支持</li>
+<li>轻量的 AOP 支持</li>
+</ol>
+<h2 id="简单的_Demo">简单的 Demo</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> com.rayn.jflask.framework.annotation.ioc.AutoWired;</span><br><span class="line"><span class="keyword">import</span> com.rayn.jflask.framework.annotation.web.*;</span><br><span class="line"><span class="keyword">import</span> com.rayn.jflask.framework.mvc.Respond;</span><br><span class="line"><span class="keyword">import</span> com.rayn.jflask.framework.mvc.model.Params;</span><br><span class="line"><span class="keyword">import</span> com.rayn.jflask.framework.mvc.result.Result;</span><br><span class="line"><span class="keyword">import</span> com.rayn.jflask.sample.models.User;</span><br><span class="line"><span class="keyword">import</span> com.rayn.jflask.sample.services.UserService;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Controller 和 Route 注解实现路由映射</span></span><br><span class="line"><span class="comment">// Respond 可以响应各类数据类型 (text, jsp, json)</span></span><br><span class="line"><span class="annotation">@Controller</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ExampleController</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// AutoWired 实现依赖注入</span></span><br><span class="line">    <span class="annotation">@AutoWired</span></span><br><span class="line">    <span class="keyword">private</span> UserService userService;</span><br><span class="line"></span><br><span class="line">    <span class="annotation">@Route</span>(<span class="string">"/"</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">index</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> Respond.text(<span class="string">"Hello JFlask"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// text 参数自动注入到路由函数的参数</span></span><br><span class="line">    <span class="annotation">@Route</span>(<span class="string">"/&lt;text&gt;"</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">echo</span><span class="params">(String text)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> Respond.jsp(<span class="string">"index.jsp"</span>,</span><br><span class="line">                <span class="string">"greeting"</span>, <span class="string">"JFlask"</span>,</span><br><span class="line">                <span class="string">"text"</span>, text);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="annotation">@Route</span>(<span class="string">"/users"</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">users</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> Respond.jsp(<span class="string">"users.jsp"</span>,</span><br><span class="line">                <span class="string">"users"</span>, userService.findAll());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="annotation">@Route</span>(value = <span class="string">"/users"</span>, method = <span class="string">"POST"</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> Result <span class="title">createUser</span><span class="params">(Params params)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// params.toModel 参数对应值直接注入实体类</span></span><br><span class="line">        User user = params.toModel(User.class);</span><br><span class="line">        Map&lt;String, Object&gt; data = <span class="keyword">new</span> HashMap&lt;&gt;();</span><br><span class="line">        data.put(<span class="string">"status"</span>, <span class="string">"success"</span>);</span><br><span class="line">        data.put(<span class="string">"user"</span>, user.getUsername());</span><br><span class="line">        data.put(<span class="string">"password"</span>, user.getPassword());</span><br><span class="line">        <span class="keyword">return</span> Respond.json(data);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</span>
       
     </div>
 
@@ -267,9 +281,13 @@
       
         <div class="post-tags">
           
-            <a href="/tags/C/" rel="tag">#C++</a>
+            <a href="/tags/Flask/" rel="tag">#Flask</a>
           
-            <a href="/tags/STL/" rel="tag">#STL</a>
+            <a href="/tags/Java/" rel="tag">#Java</a>
+          
+            <a href="/tags/Web/" rel="tag">#Web</a>
+          
+            <a href="/tags/轮子/" rel="tag">#轮子</a>
           
         </div>
       
@@ -278,17 +296,13 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2015/08/03/cuit_acm_website/" rel="next" title="CUIT ACM Website 项目">
-                <i class="fa fa-chevron-left"></i> CUIT ACM Website 项目
+              <a href="/2015/12/13/6.824_lab1/" rel="next" title="MIT 6.824 Lab 1：MapReduce">
+                <i class="fa fa-chevron-left"></i> MIT 6.824 Lab 1：MapReduce
               </a>
             
           </div>
 
           <div class="post-nav-prev post-nav-item">
-            
-              <a href="/2015/10/24/6.824_schedule/" rel="prev" title="MIT 6.824 Distributed Systems 计划">
-                MIT 6.824 Distributed Systems 计划 <i class="fa fa-chevron-right"></i>
-              </a>
             
           </div>
         </div>
@@ -313,8 +327,8 @@
         
           <div class="comments" id="comments">
             
-              <div class="ds-thread" data-thread-key="2015/10/04/deque_dafahao/"
-                   data-title="STL源码分析: deque" data-url="http://www.raynxxx.com/2015/10/04/deque_dafahao/">
+              <div class="ds-thread" data-thread-key="2016/07/17/jflask_01/"
+                   data-title="JFlask 诞生手记 01" data-url="http://www.raynxxx.com/2016/07/17/jflask_01/">
               </div>
             
           </div>
@@ -420,7 +434,7 @@
           <div class="post-toc">
             
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#deque概述"><span class="nav-number">1.</span> <span class="nav-text">deque概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#deque的内存结构"><span class="nav-number">2.</span> <span class="nav-text">deque的内存结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#deque的迭代器"><span class="nav-number">3.</span> <span class="nav-text">deque的迭代器</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#预期特性_(beta)"><span class="nav-number">2.</span> <span class="nav-text">预期特性 (beta)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#简单的_Demo"><span class="nav-number">3.</span> <span class="nav-text">简单的 Demo</span></a></li></ol></div>
             
           </div>
           <div class="post-toc-indicator-bottom post-toc-indicator"></div>
